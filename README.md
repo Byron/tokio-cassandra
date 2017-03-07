@@ -4,10 +4,9 @@ A Cassandra Native Protocol 3 implementation using Tokio for IO.
 
 - [Goals](#goals)
   - [General](#general)
-  - [Minimal Viable Product and v1.0](#minimal-viable-product-and-v10)
-- [Status](#status)
-  - [Commandline Interface](#commandline-interface)
-  - [Library](#library)
+  - [Milestones](#milestones)
+  - [What we are working on](#what-we-are-working-on)
+  - [Want to contribute?](#want-to-contribute)
 - [Usage](#usage)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
