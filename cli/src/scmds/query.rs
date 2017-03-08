@@ -48,7 +48,7 @@ impl Options {
         })
     }
 
-    fn try_into_query_string(self) -> Result<String> {
+    fn into_query_string(self) -> Option<String> {
         fn trim(mut s: String) -> String {
             let len;
             {
@@ -85,28 +85,27 @@ impl Options {
         q = sanitize(q);
 
         if !self.interactive && q.len() == 0 {
-            bail!("Query cannot be empty")
+            return None;
         }
 
-        Ok(q)
+        Some(q)
     }
 }
 
 pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
     let addr = format!("{}:{}", opts.host, opts.port);
     let qopts = Options::try_from(args)?;
-    let reader = match qopts.interactive {
-        true => Some((linefeed::Reader::new("cqlshell")?, opts.clone(), qopts.keyspace.clone())),
-        false => None,
-    };
-    let query = qopts.try_into_query_string()?;
+    let (interactive, query) = (qopts.interactive, qopts.into_query_string());
 
-    if args.is_present("dry-run") {
-        println!("{}", query);
-        if reader.is_none() {
+    let query = match (query, interactive, args.is_present("dry-run")) {
+        (Some(query), _interactive, true) => {
+            println!("{}", query);
             return Ok(());
         }
-    }
+        (Some(query), false, false) => query,
+        (query, true, false) => return shell::interactive(linefeed::Reader::new("cqlshell")?, opts, query),
+        (None, _interactive, _dry_run) => bail!("Query cannot be empty"),
+    };
 
     let (mut core, client) = opts.connect();
     core.run(client)
@@ -135,11 +134,5 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
             }
             println!();
             Ok(())
-        })?;
-
-    if let Some((reader, opts, keyspace)) = reader {
-        shell::interactive(reader, opts, keyspace)
-    } else {
-        Ok(())
-    }
+        })
 }

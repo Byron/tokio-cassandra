@@ -147,7 +147,7 @@ pub fn run() -> Result<()> {
                 .long("dry-run")
                 .short("n")
                 .help("Don't execute the generated query, but display it on standard output. Output formats are \
-                       just ignored if set.")));
+                       just ignored if set, as well as --interactive.")));
     let args: clap::ArgMatches = app.get_matches();
     let opts = ConnectionOptions::try_from(&args)?;
 
