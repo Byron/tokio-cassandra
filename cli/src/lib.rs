@@ -7,6 +7,8 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate serde_yaml;
 
+extern crate linefeed;
+
 #[macro_use]
 extern crate error_chain;
 extern crate tokio_cassandra;

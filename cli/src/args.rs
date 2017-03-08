@@ -50,6 +50,7 @@ impl From<CliProtoVersion> for ProtocolVersion {
 }
 
 
+#[derive(Clone)]
 pub struct ConnectionOptions {
     pub client: Client,
     pub addr: SocketAddr,

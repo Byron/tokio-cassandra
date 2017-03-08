@@ -1,6 +1,8 @@
 use clap;
+use linefeed;
 use super::super::args::ConnectionOptions;
 use super::super::errors::*;
+use super::shell;
 use tokio_cassandra::codec::primitives::{CqlFrom, CqlLongString};
 use tokio_cassandra::codec::header::Header;
 use std::fs::File;
@@ -20,11 +22,13 @@ struct Options {
     file_content: String,
     execute: String,
     keyspace: Option<String>,
+    interactive: bool,
 }
 
 impl Options {
     fn try_from(args: &clap::ArgMatches) -> Result<Options> {
         Ok(Options {
+            interactive: args.is_present("interactive"),
             file_content: match args.value_of("file") {
                 None => String::new(),
                 Some(fp) => {
@@ -80,7 +84,7 @@ impl Options {
         q = extend_sanitized(q, self.execute);
         q = sanitize(q);
 
-        if q.len() == 0 {
+        if !self.interactive && q.len() == 0 {
             bail!("Query cannot be empty")
         }
 
@@ -90,11 +94,18 @@ impl Options {
 
 pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
     let addr = format!("{}:{}", opts.host, opts.port);
-    let query = Options::try_from(args)?.try_into_query_string()?;
+    let qopts = Options::try_from(args)?;
+    let reader = match qopts.interactive {
+        true => Some((linefeed::Reader::new("cqlshell")?, opts.clone(), qopts.keyspace.clone())),
+        false => None,
+    };
+    let query = qopts.try_into_query_string()?;
 
     if args.is_present("dry-run") {
         println!("{}", query);
-        return Ok(());
+        if reader.is_none() {
+            return Ok(());
+        }
     }
 
     let (mut core, client) = opts.connect();
@@ -124,6 +135,11 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
             }
             println!();
             Ok(())
-        })
-        .map_err(|e| e.into())
+        })?;
+
+    if let Some((reader, opts, keyspace)) = reader {
+        shell::interactive(reader, opts, keyspace)
+    } else {
+        Ok(())
+    }
 }

@@ -127,6 +127,13 @@ pub fn run() -> Result<()> {
                 .long("execute")
                 .short("e")
                 .help("Execute the given CQL statement. If a file is read to, the execute statement is always last."))
+            .arg(Arg::with_name("interactive")
+                .required(false)
+                .takes_value(false)
+                .long("interactive")
+                .short("i")
+                .help("Drop into an interactive shell if possible, right after executing all CQL statements \
+                       provided by --execute and/or --file."))
             .arg(Arg::with_name("output-format")
                 .required(false)
                 .takes_value(true)

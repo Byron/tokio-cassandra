@@ -77,6 +77,7 @@ impl Service for ClientHandle {
 }
 
 /// Currently acts more like a builder, and the desired semantics are yet to be determined.
+#[derive(PartialEq, Debug, Clone)]
 pub struct Client {
     pub protocol: CqlProto,
 }
