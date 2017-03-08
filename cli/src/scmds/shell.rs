@@ -16,7 +16,7 @@ pub fn interactive<T: Terminal>(mut rd: Reader<T>, _opts: ConnectionOptions, _in
                 println!("{}", line);
             }
             ReadResult::Signal(sig) => {
-                println!("");
+                println!();
                 println!("signal received: {:?} - FIXME/TBD: do we need to shut anything down?", sig);
             }
         }
