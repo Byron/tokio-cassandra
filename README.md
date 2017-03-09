@@ -26,6 +26,8 @@ A Cassandra Native Protocol 3 implementation using Tokio for IO.
 # Milestones
 1. [x] The first connection
 1. [x] TLS Support
+1. [ ] An interactive shell with auto-completion and syntax highlighting
+1. [ ] The first query and result
 1. [v1.0 Minimal Viable Product](https://github.com/nhellwig/tokio-cassandra/milestone/2)
 
 # What we are working on
