@@ -23,6 +23,7 @@ pub mod errors {
     use std::net::AddrParseError;
     use semver::SemVerError;
     use tokio_cassandra::codec;
+    use tokio_cassandra::tokio;
     use std::io;
 
     error_chain!{
@@ -36,6 +37,8 @@ pub mod errors {
             SemVerParse(SemVerError);
             // FIXME: use links {} instead - however, failed for me.
             CodecPrimitive(codec::primitives::Error);
+            // FIXME: use links {} instead - however, failed for me.
+            Tokio(tokio::error::Error);
             SerdeJson(::serde_json::Error);
             SerdeYaml(::serde_yaml::Error);
             Other(io::Error);
