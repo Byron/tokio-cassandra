@@ -2,21 +2,11 @@ use clap;
 use linefeed;
 use super::super::args::ConnectionOptions;
 use super::super::errors::*;
+use super::utils::{output_result, OutputFormat, Demo};
 use super::shell;
 use tokio_cassandra::codec::primitives::{CqlFrom, CqlLongString};
-use tokio_cassandra::codec::header::Header;
 use std::fs::File;
 use std::io::{self, Read};
-
-arg_enum! {
-    #[allow(non_camel_case_types)]
-    #[derive(Debug)]
-    pub enum OutputFormat {
-        yaml,
-        json
-    }
-}
-
 
 struct Options {
     file_content: String,
@@ -93,23 +83,6 @@ impl Options {
     }
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct Demo {
-    pub result_example: Header,
-    pub description: String,
-}
-
-impl Default for Demo {
-    fn default() -> Self {
-        Demo {
-            result_example: Header::try_from(b"\x03\x02\x00\x00\x05\x00\x00\x00\x00").unwrap(),
-            description: "I believe we need to implement the serde-traits manually on our response types to \
-                              implement it in a controlled fashion without extra copies."
-                    .into(),
-        }
-    }
-}
-
 pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
     let addr = format!("{}:{}", opts.host, opts.port);
     let qopts = Options::try_from(args)?;
@@ -134,13 +107,12 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
         let s = io::stdout();
         let mut lio = s.lock();
         let demo = Demo::default();
-        match args.value_of("output-format")
-                  .expect("clap to work")
-                  .parse()
-                  .expect("clap to work") {
-            OutputFormat::json => ::serde_json::ser::to_writer_pretty(&mut lio, &demo)?,
-            OutputFormat::yaml => ::serde_yaml::to_writer(&mut lio, &demo)?,
-        }
+        output_result(&mut lio,
+                      &demo,
+                      args.value_of("output-format")
+                          .expect("clap to work")
+                          .parse()
+                          .expect("clap to work"))?;
         println!();
         Ok(())
     })

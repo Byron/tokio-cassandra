@@ -26,6 +26,7 @@ serde = "0.9.11"
 serde_derive = "0.9.11"
 serde_json = "0.9.9"
 serde_yaml = "0.6.2"
+syntect = { version = "1.2.0", optional = true, default-features = false }
 tokio-core = "0.1"
 tokio-proto = "0.1"
 tokio-service = "0.1"
@@ -35,6 +36,11 @@ features = ["with-serde", "with-openssl"]
 path = ".."
 version = "0.0"
 
+[features]
+default = ["colors"]
+colors = ["syntect"]
+
+
 [lib]
 name = "tcc"
 
@@ -42,3 +48,6 @@ name = "tcc"
 
 [replace."tokio-core:0.1.4"]
 git = "https://github.com/tokio-rs/tokio-core"
+
+[replace."syntect:1.2.0"]
+git = "https://github.com/Byron/syntect"

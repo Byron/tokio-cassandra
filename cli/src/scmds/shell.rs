@@ -1,6 +1,6 @@
 use super::super::errors::*;
 use super::super::args::ConnectionOptions;
-use super::query::Demo;
+use super::utils::Demo;
 
 use std::io;
 use std::rc::Rc;
@@ -32,6 +32,7 @@ fn execute<T: Terminal>(rd: &mut Reader<T>, _client: &mut ClientHandle, core: &m
             Ok::<_, ()>({
                             let mut d = Demo::default();
                             d.description = query;
+                            ::std::thread::sleep(::std::time::Duration::from_millis(100));
                             d
                         })
         });
