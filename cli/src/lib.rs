@@ -16,8 +16,9 @@ extern crate tokio_core;
 extern crate tokio_service;
 extern crate futures;
 extern crate dns_lookup;
-#[cfg(feature = "colors")]
 extern crate semver;
+#[cfg(feature = "colors")]
+extern crate syntect;
 
 pub mod errors {
     use std::num::ParseIntError;
