@@ -4,6 +4,7 @@ use super::query::Demo;
 
 use std::io;
 use std::rc::Rc;
+use std::ascii::AsciiExt;
 
 use linefeed::{Completion, Completer, ReadResult, Reader};
 use linefeed::Terminal;
@@ -73,6 +74,7 @@ pub fn interactive<T: Terminal>(mut rd: Reader<T>,
                 break;
             }
             ReadResult::Input(line) => {
+                rd.add_history(line.to_owned());
                 execute(&mut rd, &mut client, &mut core, line)?;
             }
             ReadResult::Signal(sig) => {
@@ -86,25 +88,121 @@ pub fn interactive<T: Terminal>(mut rd: Reader<T>,
 }
 
 struct CqlCompleter;
+const CQL_KEYWORDS: &'static [&'static str] = &["add",
+                                                "all",
+                                                "allow",
+                                                "alter",
+                                                "and",
+                                                "any",
+                                                "apply",
+                                                "as",
+                                                "asc",
+                                                "ascii",
+                                                "authorize",
+                                                "batch",
+                                                "begin",
+                                                "bigint",
+                                                "blob",
+                                                "boolean",
+                                                "by",
+                                                "clustering",
+                                                "columnfamily",
+                                                "compact",
+                                                "consistency",
+                                                "count",
+                                                "counter",
+                                                "create",
+                                                "custom",
+                                                "decimal",
+                                                "delete",
+                                                "desc",
+                                                "distinct",
+                                                "double",
+                                                "drop",
+                                                "each_quorum",
+                                                "exists",
+                                                "filtering",
+                                                "float",
+                                                "from",
+                                                "frozen",
+                                                "full",
+                                                "grant",
+                                                "if",
+                                                "in",
+                                                "index",
+                                                "inet",
+                                                "infinity",
+                                                "insert",
+                                                "int",
+                                                "into",
+                                                "key",
+                                                "keyspace",
+                                                "keyspaces",
+                                                "level",
+                                                "limit",
+                                                "list",
+                                                "local_one",
+                                                "local_quorum",
+                                                "map",
+                                                "modify",
+                                                "nan",
+                                                "nonrecursive",
+                                                "nosuperuser",
+                                                "not",
+                                                "of",
+                                                "on",
+                                                "one",
+                                                "order",
+                                                "password",
+                                                "permission",
+                                                "permissions",
+                                                "primary",
+                                                "quorum",
+                                                "rename",
+                                                "revoke",
+                                                "schema",
+                                                "select",
+                                                "set",
+                                                "static",
+                                                "storage",
+                                                "superuser",
+                                                "table",
+                                                "text",
+                                                "timestamp",
+                                                "timeuuid",
+                                                "three",
+                                                "to",
+                                                "token",
+                                                "truncate",
+                                                "ttl",
+                                                "tuple",
+                                                "two",
+                                                "type",
+                                                "unlogged",
+                                                "update",
+                                                "use",
+                                                "user",
+                                                "users",
+                                                "using",
+                                                "uuid",
+                                                "values",
+                                                "varchar",
+                                                "varint",
+                                                "where",
+                                                "with",
+                                                "writetime"];
 
 impl<T: Terminal> Completer<T> for CqlCompleter {
-    fn complete(&self, word: &str, reader: &Reader<T>, start: usize, _end: usize) -> Option<Vec<Completion>> {
-        let line = reader.buffer();
-        let mut words = line[..start].split_whitespace();
-        println!("word = {:?}", word);
-        println!("start = {:?}", start);
-        println!("_end = {:?}", _end);
+    fn complete(&self, word: &str, _reader: &Reader<T>, _start: usize, _end: usize) -> Option<Vec<Completion>> {
+        let mut res = Vec::new();
+        let word = word.to_ascii_lowercase();
 
-        match words.next() {
-            // Complete command name
-            None => {
-                let compls = Vec::new();
-
-                Some(compls)
+        for kw in CQL_KEYWORDS {
+            if kw.starts_with(&word) {
+                res.push(Completion::simple(kw.to_string()));
             }
-            // Complete command parameters
-            Some("get") | Some("set") => None,
-            _ => None,
         }
+
+        Some(res)
     }
 }
