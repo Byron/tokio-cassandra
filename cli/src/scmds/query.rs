@@ -28,24 +28,25 @@ struct Options {
 impl Options {
     fn try_from(args: &clap::ArgMatches) -> Result<Options> {
         Ok(Options {
-            interactive: args.is_present("interactive"),
-            file_content: match args.value_of("file") {
-                None => String::new(),
-                Some(fp) => {
-                    let s = io::stdin();
-                    let mut f: Box<Read> = match fp {
-                        "-" => Box::new(s.lock()),
-                        _ => Box::new(File::open(&fp)
-                            .chain_err(|| format!("Failed to open CQL file at '{}' for reading", fp))?),
-                    };
-                    let mut buf = String::new();
-                    f.read_to_string(&mut buf)?;
-                    buf
+               interactive: args.is_present("interactive"),
+               file_content: match args.value_of("file") {
+                   None => String::new(),
+                   Some(fp) => {
+            let s = io::stdin();
+            let mut f: Box<Read> = match fp {
+                "-" => Box::new(s.lock()),
+                _ => {
+                    Box::new(File::open(&fp).chain_err(|| format!("Failed to open CQL file at '{}' for reading", fp))?)
                 }
-            },
-            execute: args.value_of("execute").map(Into::into).unwrap_or_default(),
-            keyspace: args.value_of("keyspace").map(Into::into),
-        })
+            };
+            let mut buf = String::new();
+            f.read_to_string(&mut buf)?;
+            buf
+        }
+               },
+               execute: args.value_of("execute").map(Into::into).unwrap_or_default(),
+               keyspace: args.value_of("keyspace").map(Into::into),
+           })
     }
 
     fn into_query_string(self) -> Option<String> {
@@ -104,7 +105,7 @@ impl Default for Demo {
             result_example: Header::try_from(b"\x03\x02\x00\x00\x05\x00\x00\x00\x00").unwrap(),
             description: "I believe we need to implement the serde-traits manually on our response types to \
                               implement it in a controlled fashion without extra copies."
-                .into(),
+                    .into(),
         }
     }
 }
@@ -125,21 +126,22 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
     };
 
     let (mut core, client) = opts.connect();
-    core.run(client)
-        .chain_err(|| format!("Failed to connect to {}", addr))
-        .and_then(|_client| {
-            // FIXME: provide a consuming version stat consumes a string directly into the vec
-            // and thus prevents an entirely unnecessary copy
-            let _query = CqlLongString::<Vec<u8>>::try_from(&query)?;
+    core.run(client).chain_err(|| format!("Failed to connect to {}", addr)).and_then(|_client| {
+        // FIXME: provide a consuming version stat consumes a string directly into the vec
+        // and thus prevents an entirely unnecessary copy
+        let _query = CqlLongString::<Vec<u8>>::try_from(&query)?;
 
-            let s = io::stdout();
-            let mut lio = s.lock();
-            let demo = Demo::default();
-            match args.value_of("output-format").expect("clap to work").parse().expect("clap to work") {
-                OutputFormat::json => ::serde_json::ser::to_writer_pretty(&mut lio, &demo)?,
-                OutputFormat::yaml => ::serde_yaml::to_writer(&mut lio, &demo)?,
-            }
-            println!();
-            Ok(())
-        })
+        let s = io::stdout();
+        let mut lio = s.lock();
+        let demo = Demo::default();
+        match args.value_of("output-format")
+                  .expect("clap to work")
+                  .parse()
+                  .expect("clap to work") {
+            OutputFormat::json => ::serde_json::ser::to_writer_pretty(&mut lio, &demo)?,
+            OutputFormat::yaml => ::serde_yaml::to_writer(&mut lio, &demo)?,
+        }
+        println!();
+        Ok(())
+    })
 }

@@ -8,8 +8,8 @@ pub fn test_connection(opts: ConnectionOptions, _args: &clap::ArgMatches) -> Res
     core.run(client)
         .chain_err(|| format!("Failed to connect to {}", addr))
         .map(|_client| {
-            println!("Connection to {} successful", addr);
-            ()
-        })
+                 println!("Connection to {} successful", addr);
+                 ()
+             })
         .map_err(|e| e.into())
 }

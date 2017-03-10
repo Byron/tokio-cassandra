@@ -3,8 +3,9 @@ use super::super::args::ConnectionOptions;
 use super::query::Demo;
 
 use std::io;
+use std::rc::Rc;
 
-use linefeed::{ReadResult, Reader};
+use linefeed::{Completion, Completer, ReadResult, Reader};
 use linefeed::Terminal;
 use tokio_core::reactor::Core;
 use tokio_cassandra::tokio::client::ClientHandle;
@@ -17,9 +18,9 @@ use self::PromptKind::*;
 
 fn prompt<T: Terminal>(rd: &mut Reader<T>, s: PromptKind) {
     rd.set_prompt(match s {
-        Idle => "cql > ",
-        Busy => "cql ! ",
-    });
+                      Idle => "cql > ",
+                      Busy => "cql ! ",
+                  });
 }
 
 fn execute<T: Terminal>(rd: &mut Reader<T>, _client: &mut ClientHandle, core: &mut Core, query: String) -> Result<()> {
@@ -28,10 +29,10 @@ fn execute<T: Terminal>(rd: &mut Reader<T>, _client: &mut ClientHandle, core: &m
         let req = future::lazy(|| {
             prompt(rd, Busy);
             Ok::<_, ()>({
-                let mut d = Demo::default();
-                d.description = query;
-                d
-            })
+                            let mut d = Demo::default();
+                            d.description = query;
+                            d
+                        })
         });
         match core.run(req) {
             Ok(result) => {
@@ -55,6 +56,7 @@ pub fn interactive<T: Terminal>(mut rd: Reader<T>,
                                 initial_query: Option<String>)
                                 -> Result<()> {
 
+    rd.set_completer(Rc::new(CqlCompleter));
     prompt(&mut rd, Idle);
 
     let (mut core, client) = opts.connect();
@@ -81,4 +83,28 @@ pub fn interactive<T: Terminal>(mut rd: Reader<T>,
         }
     }
     Ok(())
+}
+
+struct CqlCompleter;
+
+impl<T: Terminal> Completer<T> for CqlCompleter {
+    fn complete(&self, word: &str, reader: &Reader<T>, start: usize, _end: usize) -> Option<Vec<Completion>> {
+        let line = reader.buffer();
+        let mut words = line[..start].split_whitespace();
+        println!("word = {:?}", word);
+        println!("start = {:?}", start);
+        println!("_end = {:?}", _end);
+
+        match words.next() {
+            // Complete command name
+            None => {
+                let compls = Vec::new();
+
+                Some(compls)
+            }
+            // Complete command parameters
+            Some("get") | Some("set") => None,
+            _ => None,
+        }
+    }
 }
