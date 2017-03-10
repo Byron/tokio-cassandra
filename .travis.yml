@@ -18,5 +18,5 @@ script:
 - cargo doc
 - make unit-tests
 - cargo test
-- cd cli && cargo build && cargo build --no-default-features
+- (cd cli && cargo build && cargo build --no-default-features)
 - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then make integration-tests; fi
