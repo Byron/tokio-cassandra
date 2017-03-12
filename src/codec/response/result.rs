@@ -1,0 +1,511 @@
+use codec::primitives::{CqlFrom, CqlString, CqlBytes};
+use codec::header::ProtocolVersion;
+use codec::primitives::decode;
+use tokio_core::io::EasyBuf;
+
+use super::*;
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ResultHeader {
+    Void,
+    SetKeyspace(CqlString<EasyBuf>),
+    SchemaChange(SchemaChangePayload),
+    Rows(RowsMetadata),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct SchemaChangePayload {
+    change_type: CqlString<EasyBuf>,
+    target: CqlString<EasyBuf>,
+    options: CqlString<EasyBuf>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct RowsMetadata {
+    global_tables_spec: Option<TableSpec>,
+    paging_state: Option<CqlBytes<EasyBuf>>,
+    no_metadata: bool,
+    columns_count: i32,
+    column_spec: Option<Vec<ColumnSpec>>,
+}
+
+impl Default for RowsMetadata {
+    fn default() -> RowsMetadata {
+        RowsMetadata {
+            global_tables_spec: None,
+            paging_state: None,
+            no_metadata: false,
+            columns_count: -1,
+            column_spec: None,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TableSpec {
+    keyspace: CqlString<EasyBuf>,
+    table: CqlString<EasyBuf>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ColumnSpec {
+    //   WithTableSpec {
+    //       table_spec: TableSpec,
+    //       name: CqlString<EasyBuf>,
+    //   },
+    WithGlobalSpec { name: CqlString<EasyBuf> },
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ColumnType {
+    Custom(CqlString<EasyBuf>),
+    Ascii,
+    Bigint,
+    Blob,
+    Boolean,
+    Counter,
+    Decimal,
+    Double,
+    Float,
+    Int,
+    Timestamp,
+    Uuid,
+    Varchar,
+    Varint,
+    Timeuuid,
+    Inet,
+    List(Box<ColumnType>),
+    Map(Box<ColumnType>, Box<ColumnType>),
+    Set(Box<ColumnType>),
+    Udt {
+        keyspace: CqlString<EasyBuf>,
+        name: CqlString<EasyBuf>,
+        fields: Vec<UdtField>,
+    },
+    Tuple(Vec<ColumnType>),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct UdtField(CqlString<EasyBuf>, ColumnType);
+
+impl ColumnType {
+    pub fn decode(v: ProtocolVersion, buf: ::tokio_core::io::EasyBuf) -> decode::ParseResult<Option<ColumnType>> {
+        Ok(if buf.len() < 2 {
+               (buf, None)
+           } else {
+               let (buf, id) = decode::short(buf)?;
+               match id {
+                   0x0000 => {
+                let (buf, s) = decode::string(buf)?;
+                (buf, Some(ColumnType::Custom(s)))
+            }
+                   0x0001 => (buf, Some(ColumnType::Ascii)),
+                   0x0002 => (buf, Some(ColumnType::Bigint)),
+                   0x0003 => (buf, Some(ColumnType::Blob)),
+                   0x0004 => (buf, Some(ColumnType::Boolean)),
+                   0x0005 => (buf, Some(ColumnType::Counter)),
+                   0x0006 => (buf, Some(ColumnType::Decimal)),
+                   0x0007 => (buf, Some(ColumnType::Double)),
+                   0x0008 => (buf, Some(ColumnType::Float)),
+                   0x0009 => (buf, Some(ColumnType::Int)),
+                   0x000B => (buf, Some(ColumnType::Timestamp)),
+                   0x000C => (buf, Some(ColumnType::Uuid)),
+                   0x000D => (buf, Some(ColumnType::Varchar)),
+                   0x000E => (buf, Some(ColumnType::Varint)),
+                   0x000F => (buf, Some(ColumnType::Timeuuid)),
+                   0x0010 => (buf, Some(ColumnType::Inet)),
+                   0x0020 => {
+                let (buf, inner) = Self::decode(v, buf)?;
+                (buf, inner.map(|v| ColumnType::List(Box::new(v))))
+            }
+                   0x0021 => {
+                let (buf, inner_key) = Self::decode(v, buf)?;
+                let (buf, inner_value) = Self::decode(v, buf)?;
+                let map = inner_key.and_then(|k| inner_value.map(|v| (ColumnType::Map(Box::new(k), Box::new(v)))));
+                (buf, map)
+            }
+                   0x0022 => {
+                let (buf, inner) = Self::decode(v, buf)?;
+                (buf, inner.map(|v| ColumnType::Set(Box::new(v))))
+            }
+                   0x0030 => {
+                //                       TODO: looks a bit complicated, see if there is potential for optimization
+                let (buf, ks) = decode::string(buf)?;
+                let (buf, name) = decode::string(buf)?;
+                let (buf, n) = decode::short(buf)?;
+
+                let mut fields = Vec::new();
+                let mut b = buf;
+                for _ in 0..n {
+                    let (buf, fname) = decode::string(b)?;
+                    let (buf, ctype) = Self::decode(v, buf)?;
+                    if let Some(ctype) = ctype {
+                        fields.push(UdtField(fname, ctype));
+                    } else {
+                        return Ok((buf, None));
+                    }
+                    b = buf
+                }
+                (b,
+                 Some(ColumnType::Udt {
+                          keyspace: ks,
+                          name: name,
+                          fields: fields,
+                      }))
+            }
+
+                   0x0031 => {
+                let (buf, n) = decode::short(buf)?;
+
+                let mut fields = Vec::new();
+                let mut b = buf;
+                for _ in 0..n {
+                    let (buf, ctype) = Self::decode(v, b)?;
+                    if let Some(ctype) = ctype {
+                        fields.push(ctype);
+                    } else {
+                        return Ok((buf, None));
+                    }
+                    b = buf
+                }
+                (b, Some(ColumnType::Tuple(fields)))
+            }
+
+                   _ => unimplemented!(),
+               }
+           })
+    }
+}
+
+impl ResultHeader {
+    pub fn decode(_v: ProtocolVersion, buf: ::tokio_core::io::EasyBuf) -> Result<Option<ResultHeader>> {
+
+        if buf.len() < 4 {
+            Ok(None)
+        } else {
+            let (buf, t) = decode::int(buf)?;
+            match t {
+                0x0001 => Ok(Some(ResultHeader::Void)),
+                0x0002 => Self::match_decode(Self::decode_rows_metadata(buf), |d| ResultHeader::Rows(d)),
+                0x0003 => Self::match_decode(decode::string(buf), |s| ResultHeader::SetKeyspace(s)),
+                0x0005 => {
+                    Self::match_decode(Self::decode_schema_change(buf),
+                                       |c| ResultHeader::SchemaChange(c))
+                }
+                // TODO:
+                // 0x0004    Prepared: result to a PREPARE message.
+                _ => Ok(None),
+            }
+        }
+    }
+
+    fn match_decode<T, F>(decoded: decode::ParseResult<T>, f: F) -> Result<Option<ResultHeader>>
+        where F: Fn(T) -> ResultHeader
+    {
+        match decoded {
+            Ok((_, s)) => Ok(Some(f(s))),
+            Err(decode::Error::Incomplete(_)) => Ok(None),
+            Err(a) => Err(a.into()),
+        }
+    }
+
+    fn decode_schema_change(buf: EasyBuf) -> decode::ParseResult<SchemaChangePayload> {
+        let (buf, change_type) = decode::string(buf)?;
+        let (buf, target) = decode::string(buf)?;
+        let (buf, options) = decode::string(buf)?;
+
+        Ok((buf,
+            SchemaChangePayload {
+                change_type: change_type,
+                target: target,
+                options: options,
+            }))
+    }
+
+    fn decode_rows_metadata(buf: EasyBuf) -> decode::ParseResult<RowsMetadata> {
+        let (buf, flags) = decode::int(buf)?;
+        let (buf, col_count) = decode::int(buf)?;
+
+        // <flags><columns_count>[<paging_state>]
+        // [<global_table_spec>?<col_spec_1>...<col_spec_n>]
+
+        let mut rows_metadata = RowsMetadata::default();
+
+        rows_metadata.columns_count = col_count;
+
+        if (flags & 0x0002) == 0x0002 {
+            rows_metadata.paging_state = Some(cql_bytes!(1, 2, 3));
+        }
+
+        let buf = if (flags & 0x0001) == 0x0001 {
+            let (buf, keyspace) = decode::string(buf)?;
+            let (buf, table) = decode::string(buf)?;
+            rows_metadata.global_tables_spec = Some(TableSpec {
+                                                        keyspace: keyspace,
+                                                        table: table,
+                                                    });
+            buf
+        } else {
+            buf
+        };
+
+        // TODO: parse column spec if present
+
+        rows_metadata.no_metadata = (flags & 0x0004) == 0x0004;
+
+        Ok((buf, rows_metadata))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use codec::header::Header;
+    use codec::header::ProtocolVersion::*;
+    use codec::primitives::CqlString;
+    use super::*;
+
+    fn skip_header(b: &[u8]) -> &[u8] {
+        &b[Header::encoded_len()..]
+    }
+
+    //    #[test]
+    fn decode_result_header_rows() {
+        let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_rows.msg");
+        let buf = Vec::from(skip_header(&msg[..]));
+
+        // Ok(None) Ok(Some()), Err()
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..5]).into()).unwrap();
+        assert_eq!(res, None);
+
+        let rexpected = RowsMetadata {
+            global_tables_spec: Some(TableSpec {
+                                         keyspace: cql_string!("system"),
+                                         table: cql_string!("local"),
+                                     }),
+            paging_state: None,
+            no_metadata: false,
+            columns_count: 18,
+            column_spec: Some(vec![]),
+        };
+
+        let res = ResultHeader::decode(Version3, buf.into()).unwrap();
+        assert_eq!(res, Some(ResultHeader::Rows(rexpected)));
+
+        // rest of drained buf should be used for streaming results after that
+    }
+
+    // TODO: with table spec testing
+
+    #[test]
+    fn decode_result_header_void() {
+        let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_void.msg");
+        let buf = Vec::from(skip_header(&msg[..]));
+
+        // Ok(None) Ok(Some()), Err()
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..1]).into()).unwrap();
+        assert_eq!(res, None);
+
+        let res = ResultHeader::decode(Version3, buf.into()).unwrap();
+        assert_eq!(res, Some(ResultHeader::Void));
+    }
+
+    #[test]
+    fn decode_result_header_set_keyspace() {
+        let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_set_keyspace.msg");
+        let buf = Vec::from(skip_header(&msg[..]));
+
+        // Ok(None) Ok(Some()), Err()
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..6]).into()).unwrap();
+        assert_eq!(res, None);
+
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..9]).into()).unwrap();
+        assert_eq!(res, None);
+
+        let res = ResultHeader::decode(Version3, buf.into()).unwrap();
+        assert_eq!(res, Some(ResultHeader::SetKeyspace(cql_string!("abcd"))));
+    }
+
+    #[test]
+    fn decode_result_header_schema_change() {
+        let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_schema_change.msg");
+        let buf = Vec::from(skip_header(&msg[..]));
+
+        // Ok(None) Ok(Some()), Err()
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..6]).into()).unwrap();
+        assert_eq!(res, None);
+
+        let res = ResultHeader::decode(Version3, buf.into()).unwrap();
+        assert_eq!(res,
+                   Some(ResultHeader::SchemaChange(SchemaChangePayload {
+                                                       change_type: cql_string!("change_type"),
+                                                       target: cql_string!("target"),
+                                                       options: cql_string!("options"),
+                                                   })));
+    }
+
+    #[test]
+    fn decode_column_type_custom() {
+        let buf = vec![0x00, 0x00, 0x00, 0x02, 0x61, 0x62];
+        let res = ColumnType::decode(Version3, buf.into()).unwrap();
+
+        let expected = ColumnType::Custom(cql_string!("ab"));
+
+        assert_eq!(res.1, Some(expected));
+    }
+
+    #[test]
+    fn decode_column_type_ascii() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x01]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Ascii));
+    }
+
+    #[test]
+    fn decode_column_type_bigint() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x02]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Bigint));
+    }
+
+    #[test]
+    fn decode_column_type_blob() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x03]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Blob));
+    }
+
+    #[test]
+    fn decode_column_type_boolean() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x04]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Boolean));
+    }
+
+    #[test]
+    fn decode_column_type_counter() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x05]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Counter));
+    }
+
+    #[test]
+    fn decode_column_type_decimal() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x06]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Decimal));
+    }
+
+    #[test]
+    fn decode_column_type_double() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x07]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Double));
+    }
+
+    #[test]
+    fn decode_column_type_float() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x08]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Float));
+    }
+
+    #[test]
+    fn decode_column_type_int() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x09]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Int));
+    }
+
+    #[test]
+    fn decode_column_type_timestamp() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x0b]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Timestamp));
+    }
+
+    #[test]
+    fn decode_column_type_uuid() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x0c]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Uuid));
+    }
+
+    #[test]
+    fn decode_column_type_varchar() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x0d]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Varchar));
+    }
+
+    #[test]
+    fn decode_column_type_varint() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x0e]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Varint));
+    }
+
+    #[test]
+    fn decode_column_type_timeuuid() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x0f]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Timeuuid));
+    }
+
+    #[test]
+    fn decode_column_type_inet() {
+        let res = ColumnType::decode(Version3, (vec![0x00, 0x10]).into()).unwrap();
+        assert_eq!(res.1, Some(ColumnType::Inet));
+    }
+
+    #[test]
+    fn decode_column_type_list() {
+        let buf = vec![0x00, 0x20, 0x00, 0x10];
+        let res = ColumnType::decode(Version3, buf.into()).unwrap();
+        let exp = ColumnType::List(Box::new(ColumnType::Inet));
+        assert_eq!(res.1, Some(exp));
+    }
+
+    #[test]
+    fn decode_column_type_list_nested() {
+        let buf = vec![0x00, 0x20, 0x00, 0x20, 0x00, 0x06];
+        let res = ColumnType::decode(Version3, buf.into()).unwrap();
+        let exp = ColumnType::List(Box::new(ColumnType::List(Box::new(ColumnType::Decimal))));
+        assert_eq!(res.1, Some(exp));
+    }
+
+    #[test]
+    fn decode_column_type_map() {
+        let buf = vec![0x00, 0x21, 0x00, 0x0D, 0x00, 0x06];
+        let res = ColumnType::decode(Version3, buf.into()).unwrap();
+        let exp = ColumnType::Map(Box::new(ColumnType::Varchar), Box::new(ColumnType::Decimal));
+        assert_eq!(res.1, Some(exp));
+    }
+
+    #[test]
+    fn decode_column_type_map_nested() {
+        let buf = vec![0x00, 0x21, 0x00, 0x20, 0x00, 0x0D, 0x00, 0x06];
+        let res = ColumnType::decode(Version3, buf.into()).unwrap();
+        let exp = ColumnType::Map(Box::new(ColumnType::List(Box::new(ColumnType::Varchar))),
+                                  Box::new(ColumnType::Decimal));
+        assert_eq!(res.1, Some(exp));
+    }
+
+    #[test]
+    fn decode_column_type_set() {
+        let buf = vec![0x00, 0x22, 0x00, 0x0D];
+        let res = ColumnType::decode(Version3, buf.into()).unwrap();
+        let exp = ColumnType::Set(Box::new(ColumnType::Varchar));
+        assert_eq!(res.1, Some(exp));
+    }
+
+    #[test]
+    fn decode_column_type_udt() {
+        let buf = vec![0x00, 0x30, 0x00, 0x02, 0x6B, 0x73, 0x00, 0x03, 0x75, 0x64, 0x74, 0x00, 0x02, 0x00, 0x02, 0x66,
+                       0x31, 0x00, 0x06, 0x00, 0x02, 0x66, 0x32, 0x00, 0x0D];
+        let res = ColumnType::decode(Version3, buf.into()).unwrap();
+
+        let fields = vec![UdtField(cql_string!("f1"), ColumnType::Decimal),
+                          UdtField(cql_string!("f2"), ColumnType::Varchar)];
+
+        let exp = ColumnType::Udt {
+            keyspace: cql_string!("ks"),
+            name: cql_string!("udt"),
+            fields: fields,
+        };
+        assert_eq!(res.1, Some(exp));
+    }
+
+    #[test]
+    fn decode_column_type_tuple() {
+        let buf = vec![0x00, 0x31, 0x00, 0x02, 0x00, 0x0D, 0x00, 0x06];
+        let res = ColumnType::decode(Version3, buf.into()).unwrap();
+        let exp = ColumnType::Tuple(vec![ColumnType::Varchar, ColumnType::Decimal]);
+        assert_eq!(res.1, Some(exp));
+    }
+}

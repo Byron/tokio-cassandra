@@ -250,9 +250,9 @@ mod test {
     #[test]
     fn from_startup_req() {
         let o = Message::Startup(StartupMessage {
-            cql_version: CqlString::try_from("3.2.1").unwrap(),
-            compression: None,
-        });
+                                     cql_version: CqlString::try_from("3.2.1").unwrap(),
+                                     compression: None,
+                                 });
 
         let mut buf = Vec::new();
         let flags = 0;
@@ -296,15 +296,16 @@ mod test {
 
 
         let o = Message::Query(QueryMessage {
-            query: CqlLongString::try_from("select * from system.local where key = 'local'").unwrap(),
-            values: None,
-            consistency: CqlConsistency::One,
-            skip_metadata: false,
-            page_size: Some(5000),
-            paging_state: None,
-            serial_consistency: None,
-            timestamp: Some(1486294317376770),
-        });
+                                   query: CqlLongString::try_from("select * from system.local where key = 'local'")
+                                       .unwrap(),
+                                   values: None,
+                                   consistency: CqlConsistency::One,
+                                   skip_metadata: false,
+                                   page_size: Some(5000),
+                                   paging_state: None,
+                                   serial_consistency: None,
+                                   timestamp: Some(1486294317376770),
+                               });
 
         cql_encode(Version3, flags, stream_id, o, &mut buf).unwrap();
 

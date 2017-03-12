@@ -37,8 +37,8 @@ pub trait CqlFrom<C, V>
             true => Err(ErrorKind::MaximumLengthExceeded(s.length()).into()),
             false => {
                 Ok({
-                    unsafe { Self::unchecked_from(s) }
-                })
+                       unsafe { Self::unchecked_from(s) }
+                   })
             }
         }
     }
@@ -131,7 +131,7 @@ mod test {
         let sm =
             CqlStringMap::try_from_iter(vec![(CqlString::try_from("a").unwrap(), CqlString::try_from("av").unwrap()),
                                              (CqlString::try_from("a").unwrap(), CqlString::try_from("av").unwrap())])
-                .unwrap();
+                    .unwrap();
 
         let mut buf = Vec::new();
         encode::string_map(&sm, &mut buf);
@@ -149,7 +149,7 @@ mod test {
         let csl2 = CqlStringList::try_from_iter_easy(slb.iter().cloned()).unwrap();
         let smm = CqlStringMultiMap::try_from_iter(vec![(CqlString::try_from("a").unwrap(), csl1),
                                                         (CqlString::try_from("b").unwrap(), csl2)])
-            .unwrap();
+                .unwrap();
 
         let mut buf = Vec::new();
         encode::string_multimap(&smm, &mut buf);

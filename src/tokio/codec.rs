@@ -80,10 +80,10 @@ fn open_at(path: PathBuf) -> io::Result<File> {
         .write(true)
         .open(&path)
         .map_err(|e| {
-            io_err(format!("Failed to open '{}' for writing with error with error: {:?}",
-                           path.display(),
-                           e))
-        })
+                     io_err(format!("Failed to open '{}' for writing with error with error: {:?}",
+                                    path.display(),
+                                    e))
+                 })
 }
 
 pub type CodecInputFrame = Frame<StreamingMessage, ChunkedMessage, io::Error>;
@@ -151,7 +151,7 @@ impl Codec for CqlCodec {
                                      id as u16, /* FIXME safe cast */
                                      message,
                                      buf)
-                    .map_err(io_err);
+                        .map_err(io_err);
                 self.do_encode_debug(buf)?;
                 res
             }
@@ -177,11 +177,11 @@ fn decode_complete_message_by_opcode(version: ProtocolVersion,
                                      -> response::Result<response::Message> {
     use codec::header::OpCode::*;
     Ok(match code {
-        Supported => response::Message::Supported(response::SupportedMessage::decode(version, buf)?),
-        Ready => response::Message::Ready,
-        Authenticate => response::Message::Authenticate(response::AuthenticateMessage::decode(version, buf)?),
-        AuthSuccess => response::Message::AuthSuccess(response::AuthSuccessMessage::decode(version, buf)?),
-        Error => response::Message::Error(response::ErrorMessage::decode(version, buf)?),
-        _ => unimplemented!(),
-    })
+           Supported => response::Message::Supported(response::SupportedMessage::decode(version, buf)?),
+           Ready => response::Message::Ready,
+           Authenticate => response::Message::Authenticate(response::AuthenticateMessage::decode(version, buf)?),
+           AuthSuccess => response::Message::AuthSuccess(response::AuthSuccessMessage::decode(version, buf)?),
+           Error => response::Message::Error(response::ErrorMessage::decode(version, buf)?),
+           _ => unimplemented!(),
+       })
 }

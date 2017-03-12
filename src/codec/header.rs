@@ -88,24 +88,24 @@ pub enum OpCode {
 impl OpCode {
     pub fn try_from(b: u8) -> Result<OpCode> {
         Ok(match b {
-            0x00 => OpCode::Error,
-            0x01 => OpCode::Startup,
-            0x02 => OpCode::Ready,
-            0x03 => OpCode::Authenticate,
-            0x05 => OpCode::Options,
-            0x06 => OpCode::Supported,
-            0x07 => OpCode::Query,
-            0x08 => OpCode::Result,
-            0x09 => OpCode::Prepare,
-            0x0A => OpCode::Execute,
-            0x0B => OpCode::Register,
-            0x0C => OpCode::Event,
-            0x0D => OpCode::Batch,
-            0x0E => OpCode::AuthChallenge,
-            0x0F => OpCode::AuthResponse,
-            0x10 => OpCode::AuthSuccess,
-            _ => return Err(ErrorKind::InvalidOpCode(b).into()),
-        })
+               0x00 => OpCode::Error,
+               0x01 => OpCode::Startup,
+               0x02 => OpCode::Ready,
+               0x03 => OpCode::Authenticate,
+               0x05 => OpCode::Options,
+               0x06 => OpCode::Supported,
+               0x07 => OpCode::Query,
+               0x08 => OpCode::Result,
+               0x09 => OpCode::Prepare,
+               0x0A => OpCode::Execute,
+               0x0B => OpCode::Register,
+               0x0C => OpCode::Event,
+               0x0D => OpCode::Batch,
+               0x0E => OpCode::AuthChallenge,
+               0x0F => OpCode::AuthResponse,
+               0x10 => OpCode::AuthSuccess,
+               _ => return Err(ErrorKind::InvalidOpCode(b).into()),
+           })
     }
 
     pub fn as_u8(&self) -> u8 {
@@ -189,12 +189,12 @@ impl Header {
 
         let version = Version::try_from(b[0])?;
         Ok(Header {
-            version: version,
-            flags: b[1],
-            stream_id: (&b[2..4]).read_u16::<BigEndian>().expect("to have 2 bytes exactly"),
-            op_code: OpCode::try_from(b[4])?,
-            length: (&b[5..9]).read_u32::<BigEndian>().expect("to have 4 bytes exactly"),
-        })
+               version: version,
+               flags: b[1],
+               stream_id: (&b[2..4]).read_u16::<BigEndian>().expect("to have 2 bytes exactly"),
+               op_code: OpCode::try_from(b[4])?,
+               length: (&b[5..9]).read_u32::<BigEndian>().expect("to have 4 bytes exactly"),
+           })
     }
 
     pub fn is_compressed(&self) -> bool {
@@ -260,10 +260,10 @@ pub struct Version {
 impl Version {
     pub fn try_from(b: u8) -> Result<Version> {
         Ok(match b {
-            0x03 => Version::v3_request(),
-            0x83 => Version::v3_response(),
-            _ => return Err(ErrorKind::UnsupportedVersion(b).into()),
-        })
+               0x03 => Version::v3_request(),
+               0x83 => Version::v3_response(),
+               _ => return Err(ErrorKind::UnsupportedVersion(b).into()),
+           })
     }
 
     pub fn request(version: ProtocolVersion) -> Version {

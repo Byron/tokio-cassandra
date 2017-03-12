@@ -24,9 +24,9 @@ impl Authenticator {
                 match credentials {
                     Login { username: user, password: pwd } => {
                         Ok(Authenticator::PlainTextAuthenticator {
-                            username: user,
-                            password: pwd,
-                        })
+                               username: user,
+                               password: pwd,
+                           })
                     }
                 }
             }
