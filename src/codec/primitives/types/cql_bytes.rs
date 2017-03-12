@@ -23,6 +23,10 @@ impl CqlBytes<::tokio_core::io::EasyBuf> {
     pub fn from(buf: ::tokio_core::io::EasyBuf) -> CqlBytes<::tokio_core::io::EasyBuf> {
         CqlBytes { buf: Some(buf) }
     }
+
+    pub fn buffer(self) -> Option<EasyBuf> {
+        self.buf
+    }
 }
 
 impl<'a> CqlFrom<CqlBytes<EasyBuf>, Vec<u8>> for CqlBytes<EasyBuf> {

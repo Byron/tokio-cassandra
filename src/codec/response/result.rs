@@ -25,7 +25,7 @@ pub struct RowsMetadata {
     global_tables_spec: Option<TableSpec>,
     paging_state: Option<CqlBytes<EasyBuf>>,
     no_metadata: bool,
-    column_spec: Vec<ColumnSpec>,
+    column_spec: Vec<ColumnSpec>, // TODO: rows_count
 }
 
 impl Default for RowsMetadata {
