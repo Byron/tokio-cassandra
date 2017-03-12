@@ -47,10 +47,11 @@ pub struct TableSpec {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ColumnSpec {
-    //   WithTableSpec {
-    //       table_spec: TableSpec,
-    //       name: CqlString<EasyBuf>,
-    //   },
+    WithoutGlobalSpec {
+        table_spec: TableSpec,
+        name: CqlString<EasyBuf>,
+        column_type: ColumnType,
+    },
     WithGlobalSpec {
         name: CqlString<EasyBuf>,
         column_type: ColumnType,
@@ -180,7 +181,6 @@ impl ColumnType {
 
 impl ResultHeader {
     pub fn decode(_v: ProtocolVersion, buf: ::tokio_core::io::EasyBuf) -> Result<Option<ResultHeader>> {
-
         if buf.len() < 4 {
             Ok(None)
         } else {
@@ -247,17 +247,40 @@ impl ResultHeader {
 
         rows_metadata.no_metadata = (flags & 0x0004) == 0x0004;
 
+        println!("buf = {:?}", buf);
+
         let mut columns = Vec::new();
         let mut b = buf;
         for _ in 0..col_count {
-            let (buf, name) = decode::string(b)?;
+            let (buf, table_spec) = {
+                if rows_metadata.global_tables_spec.is_none() {
+                    let (buf, keyspace) = decode::string(b)?;
+                    let (buf, table) = decode::string(buf)?;
+
+                    (buf,
+                     Some(TableSpec {
+                              keyspace: keyspace,
+                              table: table,
+                          }))
+                } else {
+                    (b, None)
+                }
+            };
+            let (buf, name) = decode::string(buf)?;
             let (buf, ctype) = ColumnType::decode(buf)?;
 
             if let Some(ctype) = ctype {
-                // TODO: without global spec
-                columns.push(ColumnSpec::WithGlobalSpec {
-                                 name: name,
-                                 column_type: ctype,
+                columns.push(if let Some(tspec) = table_spec {
+                                 ColumnSpec::WithoutGlobalSpec {
+                                     table_spec: tspec,
+                                     name: name,
+                                     column_type: ctype,
+                                 }
+                             } else {
+                                 ColumnSpec::WithGlobalSpec {
+                                     name: name,
+                                     column_type: ctype,
+                                 }
                              });
             } else {
                 return Err(decode::Error::Incomplete(decode::Needed::Unknown));
@@ -376,7 +399,42 @@ mod test {
         // TODO: rest of drained buf should be used for streaming results after that
     }
 
-    // TODO: with table spec testing
+    #[test]
+    fn decode_result_header_rows_non_global_spec() {
+        let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_rows_non_global_spec.msg");
+        let buf = Vec::from(skip_header(&msg[..]));
+
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..5]).into()).unwrap();
+        assert_eq!(res, None);
+
+        let rexpected = RowsMetadata {
+            global_tables_spec: None,
+            paging_state: None,
+            no_metadata: false,
+            column_spec: vec![ColumnSpec::WithoutGlobalSpec {
+                                  table_spec: TableSpec {
+                                      keyspace: cql_string!("system"),
+                                      table: cql_string!("local"),
+                                  },
+                                  name: cql_string!("key"),
+                                  column_type: ColumnType::Varchar,
+                              },
+                              ColumnSpec::WithoutGlobalSpec {
+                                  table_spec: TableSpec {
+                                      keyspace: cql_string!("system"),
+                                      table: cql_string!("l0cal"),
+                                  },
+                                  name: cql_string!("bootstrapped"),
+                                  column_type: ColumnType::Varchar,
+                              }],
+        };
+
+        let buf = buf.into();
+        let res = ResultHeader::decode(Version3, buf).unwrap();
+
+        assert_eq!(res, Some(ResultHeader::Rows(rexpected)));
+        // TODO: rest of drained buf should be used for streaming results after that
+    }
 
     #[test]
     fn decode_result_header_void() {
