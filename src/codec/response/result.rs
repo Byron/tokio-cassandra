@@ -247,8 +247,6 @@ impl ResultHeader {
 
         rows_metadata.no_metadata = (flags & 0x0004) == 0x0004;
 
-        println!("buf = {:?}", buf);
-
         let mut columns = Vec::new();
         let mut b = buf;
         for _ in 0..col_count {
