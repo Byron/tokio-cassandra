@@ -14,3 +14,16 @@ pub fn bigint(data: Bigint, buf: &mut InputBuffer) {
     BigEndian::write_i64(&mut bytes[..], data.inner);
     buf.write(&bytes).expect("should not fail");
 }
+
+pub fn blob<T: Buffer>(data: Blob<T>, buf: &mut InputBuffer) {
+    buf.extend(data.bytes.as_ref());
+}
+
+
+pub fn boolean(data: Boolean, buf: &mut InputBuffer) {
+    if data.inner {
+        buf.push(0x01);
+    } else {
+        buf.push(0x00);
+    }
+}

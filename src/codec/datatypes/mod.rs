@@ -17,10 +17,16 @@ pub struct Bigint {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Blob {}
+pub struct Blob<T>
+    where T: Buffer
+{
+    bytes: T,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Boolean {}
+pub struct Boolean {
+    inner: bool,
+}
 
 #[cfg(test)]
 mod test_encode_decode {
@@ -59,5 +65,17 @@ mod test_encode_decode {
     fn bigint() {
         let to_encode = Bigint { inner: -123456789 };
         assert_decode_encode(to_encode, encode::bigint, decode::bigint);
+    }
+
+    #[test]
+    fn blob() {
+        let to_encode = Blob { bytes: vec![0x00, 0x81].into() };
+        assert_decode_encode(to_encode, encode::blob, decode::blob);
+    }
+
+    #[test]
+    fn boolean() {
+        let to_encode = Boolean { inner: false };
+        assert_decode_encode(to_encode, encode::boolean, decode::boolean);
     }
 }
