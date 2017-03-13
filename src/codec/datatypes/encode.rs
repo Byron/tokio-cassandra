@@ -1,8 +1,7 @@
-use codec::primitives::CqlBytes;
-use tokio_core::io::EasyBuf;
-
 use super::*;
 
-pub fn ascii(data: Ascii) -> CqlBytes<EasyBuf> {
-    CqlBytes::from(data.bytes)
+type InputBuffer = Vec<u8>;
+
+pub fn ascii<T: Buffer>(data: Ascii<T>, buf: &mut InputBuffer) {
+    buf.extend(data.bytes.as_ref());
 }

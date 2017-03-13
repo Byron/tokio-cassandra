@@ -1,5 +1,4 @@
 use tokio_core::io::EasyBuf;
-use codec::primitives::CqlBytes;
 
 use super::*;
 
@@ -9,7 +8,9 @@ error_chain!{
     }
 }
 
-pub fn ascii(data: EasyBuf) -> Result<Ascii> {
+type OutputBuffer = EasyBuf;
+
+pub fn ascii(data: EasyBuf) -> Result<Ascii<OutputBuffer>> {
     for b in data.as_slice() {
         if *b > 127 as u8 {
             return Err(ErrorKind::InvalidAscii.into());
