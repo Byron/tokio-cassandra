@@ -27,3 +27,12 @@ pub fn boolean(data: Boolean, buf: &mut InputBuffer) {
         buf.push(0x00);
     }
 }
+
+pub fn list<T: CqlSerializable>(data: List<T>, buf: &mut InputBuffer) {
+    buf.write(&::codec::primitives::encode::int(data.inner.len() as i32)); // TODO: bounds check
+    for item in data.inner {
+        item.serialize(buf);
+    }
+
+    println!("buf = {:?}", buf);
+}

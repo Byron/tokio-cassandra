@@ -1,8 +1,19 @@
+use tokio_core::io::EasyBuf;
+
 pub mod encode;
 pub mod decode;
 
 pub trait Buffer: AsRef<[u8]> {}
 impl<T: AsRef<[u8]>> Buffer for T {}
+
+type InputBuffer = Vec<u8>;
+
+pub trait CqlSerializable
+    where Self: Sized
+{
+    fn deserialize(data: EasyBuf) -> decode::Result<Self>;
+    fn serialize(self, &mut InputBuffer);
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Ascii<T>
@@ -26,6 +37,22 @@ pub struct Blob<T>
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Boolean {
     inner: bool,
+}
+
+impl CqlSerializable for Boolean {
+    fn serialize(self, buf: &mut InputBuffer) {
+        buf.extend(&::codec::primitives::encode::int(1)[..]); // TODO: better encode bytes
+        encode::boolean(self, buf)
+    }
+
+    fn deserialize(data: EasyBuf) -> decode::Result<Self> {
+        decode::boolean(data)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct List<T: CqlSerializable> {
+    inner: Vec<T>,
 }
 
 #[cfg(test)]
@@ -77,5 +104,12 @@ mod test_encode_decode {
     fn boolean() {
         let to_encode = Boolean { inner: false };
         assert_decode_encode(to_encode, encode::boolean, decode::boolean);
+    }
+
+    #[test]
+    fn list() {
+        let to_encode =
+            List { inner: vec![Boolean { inner: false }, Boolean { inner: true }, Boolean { inner: false }] };
+        assert_decode_encode(to_encode, encode::list, decode::list);
     }
 }

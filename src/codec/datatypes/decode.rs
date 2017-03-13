@@ -8,6 +8,10 @@ error_chain!{
         InvalidAscii
         Incomplete
     }
+
+    foreign_links {
+        DecodeErr(::codec::primitives::decode::Error);
+    }
 }
 
 type OutputBuffer = EasyBuf;
@@ -41,4 +45,20 @@ pub fn boolean(data: EasyBuf) -> Result<Boolean> {
 
     let b = data.as_slice()[0];
     Ok(Boolean { inner: b != 0x00 })
+}
+
+pub fn list<T: CqlSerializable>(data: EasyBuf) -> Result<List<T>> {
+    let (data, n) = ::codec::primitives::decode::int(data)?;
+    let mut v = Vec::new();
+
+    println!("data = {:?}", data);
+
+    let mut d = data;
+    for _ in 0..n {
+        let (data, bytes) = ::codec::primitives::decode::bytes(d)?;
+        v.push(T::deserialize(bytes.buffer().unwrap())?); // TODO: cover NULL values here
+        d = data
+    }
+
+    Ok(List { inner: v })
 }
