@@ -1,4 +1,3 @@
-
 pub mod encode;
 pub mod decode;
 
@@ -26,16 +25,25 @@ pub struct Boolean {}
 #[cfg(test)]
 mod test_encode_decode {
     use super::*;
+    use tokio_core::io::EasyBuf;
+
+    fn assert_decode_encode<T>(to_encode: T,
+                               encfn: fn(T, &mut Vec<u8>),
+                               decfn: fn(EasyBuf) -> Result<T, decode::Error>)
+        where T: Clone + PartialEq + Eq + ::std::fmt::Debug
+    {
+
+        let mut encoded = Vec::new();
+        encfn(to_encode.clone(), &mut encoded);
+
+        let decoded = decfn(encoded.into());
+        assert_eq!(to_encode, decoded.unwrap());
+    }
 
     #[test]
     fn ascii() {
         let to_encode = Ascii { bytes: vec![0x00, 0x23].into() };
-
-        let mut encoded = Vec::new();
-        encode::ascii(to_encode.clone(), &mut encoded);
-
-        let decoded = decode::ascii(encoded.into());
-        assert_eq!(to_encode, decoded.unwrap());
+        assert_decode_encode(to_encode, encode::ascii, decode::ascii);
     }
 
     #[test]
@@ -45,5 +53,11 @@ mod test_encode_decode {
         encode::ascii(to_encode.clone(), &mut encoded);
         let decoded = decode::ascii(encoded.into());
         assert!(decoded.is_err());
+    }
+
+    #[test]
+    fn bigint() {
+        let to_encode = Bigint { inner: -123456789 };
+        assert_decode_encode(to_encode, encode::bigint, decode::bigint);
     }
 }
