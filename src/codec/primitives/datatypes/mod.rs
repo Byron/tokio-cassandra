@@ -28,12 +28,12 @@ pub trait CqlSerializable
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Ascii {
-    bytes: Buffer,
+    inner: Buffer,
 }
 
 impl CqlSerializable for Ascii {
     fn serialize(&self, buf: &mut InputBuffer) {
-        buf.extend(self.bytes.as_ref());
+        buf.extend(self.inner.as_ref());
     }
 
     fn deserialize(data: EasyBuf) -> Result<Self> {
@@ -43,11 +43,11 @@ impl CqlSerializable for Ascii {
             }
         }
 
-        Ok(Ascii { bytes: data })
+        Ok(Ascii { inner: data })
     }
 
     fn bytes_len(&self) -> BytesLen {
-        self.bytes.len() as BytesLen
+        self.inner.len() as BytesLen
     }
 }
 
@@ -79,20 +79,20 @@ impl CqlSerializable for Bigint {
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Blob {
-    bytes: Buffer,
+    inner: Buffer,
 }
 
 impl CqlSerializable for Blob {
     fn serialize(&self, buf: &mut InputBuffer) {
-        buf.extend(self.bytes.as_ref());
+        buf.extend(self.inner.as_ref());
     }
 
     fn deserialize(data: EasyBuf) -> Result<Self> {
-        Ok(Blob { bytes: data })
+        Ok(Blob { inner: data })
     }
 
     fn bytes_len(&self) -> BytesLen {
-        self.bytes.len() as BytesLen
+        self.inner.len() as BytesLen
     }
 }
 
@@ -166,6 +166,25 @@ impl<T: CqlSerializable> CqlSerializable for List<T> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+struct Varint {
+    inner: Buffer,
+}
+
+impl CqlSerializable for Varint {
+    fn serialize(&self, buf: &mut InputBuffer) {
+        buf.extend(self.inner.as_ref());
+    }
+
+    fn deserialize(data: EasyBuf) -> Result<Self> {
+        Ok(Varint { inner: data })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        self.inner.len() as BytesLen
+    }
+}
+
 #[cfg(test)]
 mod test_encode_decode {
     use super::*;
@@ -182,13 +201,13 @@ mod test_encode_decode {
 
     #[test]
     fn ascii() {
-        let to_encode = Ascii { bytes: vec![0x00, 0x23].into() };
+        let to_encode = Ascii { inner: vec![0x00, 0x23].into() };
         assert_serde(to_encode);
     }
 
     #[test]
     fn ascii_failing() {
-        let to_encode = Ascii { bytes: vec![0x00, 0x80].into() };
+        let to_encode = Ascii { inner: vec![0x00, 0x80].into() };
         let mut encoded = Vec::new();
         to_encode.clone().serialize(&mut encoded);
         let decoded = Ascii::deserialize(encoded.into());
@@ -203,13 +222,25 @@ mod test_encode_decode {
 
     #[test]
     fn blob() {
-        let to_encode = Blob { bytes: vec![0x00, 0x81].into() };
+        let to_encode = Blob { inner: vec![0x00, 0x81].into() };
         assert_serde(to_encode);
     }
 
     #[test]
     fn boolean() {
         let to_encode = Boolean { inner: false };
+        assert_serde(to_encode);
+    }
+
+    #[test]
+    fn decimal() {
+        //        let to_encode = Decimal { scale: 1, unscaled: Varint::from("1212312312312") };
+        //        assert_serde(to_encode);
+    }
+
+    #[test]
+    fn varint() {
+        let to_encode = Varint { inner: vec![0x00, 0x80].into() };
         assert_serde(to_encode);
     }
 
