@@ -3,7 +3,6 @@ use super::CqlFrom;
 use tokio_core::io::EasyBuf;
 
 
-
 #[derive(Clone, PartialEq, Eq)]
 pub struct CqlBytes<T>
     where T: AsRef<[u8]>
