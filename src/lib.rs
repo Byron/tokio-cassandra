@@ -26,6 +26,8 @@ extern crate semver;
 #[macro_use]
 extern crate log;
 
+extern crate num_bigint;
+
 #[macro_use]
 mod macros;
 

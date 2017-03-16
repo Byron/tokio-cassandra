@@ -185,6 +185,50 @@ impl CqlSerializable for Varint {
     }
 }
 
+impl ToString for Varint {
+    fn to_string(&self) -> String {
+        use num_bigint::{Sign, BigInt};
+        let bytes = self.inner.as_ref();
+
+        let bint = {
+            if bytes[0] & 0x80 == 0x80 {
+                let v: Vec<u8> = Vec::from(bytes).into_iter().map(|x| !x).collect();
+                BigInt::from_bytes_be(Sign::Minus, &v[..]) - BigInt::from(1)
+            } else {
+                BigInt::from_bytes_be(Sign::Plus, bytes)
+            }
+        };
+
+        format!("{}", bint)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+struct Decimal {
+    scale: i32,
+    unscaled: Varint,
+}
+
+impl CqlSerializable for Decimal {
+    fn serialize(&self, buf: &mut InputBuffer) {
+        buf.extend(&::codec::primitives::encode::int(self.scale)[..]);
+        self.unscaled.serialize(buf);
+    }
+
+    fn deserialize(data: EasyBuf) -> Result<Self> {
+        let (data, scale) = ::codec::primitives::decode::int(data)?;
+        let unscaled = Varint::deserialize(data)?;
+        Ok(Decimal {
+               scale: scale,
+               unscaled: unscaled,
+           })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        4 + self.unscaled.bytes_len()
+    }
+}
+
 #[cfg(test)]
 mod test_encode_decode {
     use super::*;
@@ -234,14 +278,32 @@ mod test_encode_decode {
 
     #[test]
     fn decimal() {
-        //        let to_encode = Decimal { scale: 1, unscaled: Varint::from("1212312312312") };
-        //        assert_serde(to_encode);
+        let to_encode = Decimal {
+            scale: 1,
+            unscaled: Varint { inner: vec![0x00, 0x80].into() },
+        };
+        assert_serde(to_encode);
     }
 
     #[test]
     fn varint() {
         let to_encode = Varint { inner: vec![0x00, 0x80].into() };
         assert_serde(to_encode);
+    }
+
+    #[test]
+    fn varint_to_string() {
+        assert_eq!(&Varint { inner: vec![0x00].into() }.to_string(), "0");
+        assert_eq!(&Varint { inner: vec![0x01].into() }.to_string(), "1");
+        assert_eq!(&Varint { inner: vec![0x7F].into() }.to_string(), "127");
+        assert_eq!(&Varint { inner: vec![0x00, 0x80].into() }.to_string(),
+                   "128");
+        assert_eq!(&Varint { inner: vec![0x00, 0x81].into() }.to_string(),
+                   "129");
+        assert_eq!(&Varint { inner: vec![0xFF].into() }.to_string(), "-1");
+        assert_eq!(&Varint { inner: vec![0x80].into() }.to_string(), "-128");
+        assert_eq!(&Varint { inner: vec![0xFF, 0x7F].into() }.to_string(),
+                   "-129");
     }
 
     #[test]
