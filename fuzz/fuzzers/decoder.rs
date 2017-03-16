@@ -3,7 +3,6 @@ extern crate libfuzzer_sys;
 extern crate tokio_cassandra;
 extern crate tokio_core;
 
-use tokio_core::io::{EasyBuf, Codec};
 use tokio_cassandra::streaming::CqlCodec;
 use tokio_cassandra::codec::header::ProtocolVersion;
 

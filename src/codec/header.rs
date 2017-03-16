@@ -34,7 +34,7 @@
 //!  protocol with optional features without needing to change the protocol
 //!  version.
 use byteorder::{BigEndian, ReadBytesExt, ByteOrder};
-const HEADER_LENGTH: usize = 9;
+pub const HEADER_LENGTH: usize = 9;
 
 error_chain! {
     errors {

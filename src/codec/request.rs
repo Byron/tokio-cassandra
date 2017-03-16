@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use codec::primitives::{BVec, CqlConsistency, CqlFrom, CqlStringMap, CqlString, CqlBytes, CqlLongString};
 use codec::primitives::encode;
+use bytes::{BufMut, BytesMut};
 
 error_chain! {
     foreign_links {
@@ -21,7 +22,7 @@ error_chain! {
 }
 
 pub trait CqlEncode {
-    fn encode(&self, v: ProtocolVersion, f: &mut Vec<u8>) -> Result<usize>;
+    fn encode(&self, v: ProtocolVersion, f: &mut BytesMut) -> Result<usize>;
 }
 
 #[derive(Debug)]
@@ -32,19 +33,17 @@ pub enum Message {
     Query(QueryMessage),
 }
 
-use tokio_core::io::EasyBuf;
-
 #[derive(Debug)]
 pub struct StartupMessage {
-    pub cql_version: CqlString<EasyBuf>,
-    pub compression: Option<CqlString<EasyBuf>>,
+    pub cql_version: CqlString<BytesMut>,
+    pub compression: Option<CqlString<BytesMut>>,
 }
 
 impl CqlEncode for StartupMessage {
-    fn encode(&self, _v: ProtocolVersion, buf: &mut Vec<u8>) -> Result<usize> {
+    fn encode(&self, _v: ProtocolVersion, buf: &mut BytesMut) -> Result<usize> {
         use codec::primitives::CqlFrom;
 
-        let mut sm: HashMap<CqlString<EasyBuf>, CqlString<EasyBuf>> = HashMap::new();
+        let mut sm: HashMap<CqlString<BytesMut>, CqlString<BytesMut>> = HashMap::new();
         sm.insert(unsafe { CqlString::unchecked_from("CQL_VERSION") },
                   self.cql_version.clone());
 
@@ -65,7 +64,7 @@ pub struct AuthResponseMessage {
 }
 
 impl CqlEncode for AuthResponseMessage {
-    fn encode(&self, _v: ProtocolVersion, buf: &mut Vec<u8>) -> Result<usize> {
+    fn encode(&self, _v: ProtocolVersion, buf: &mut BytesMut) -> Result<usize> {
         let l = buf.len();
         encode::bytes(&self.auth_data, buf);
         Ok(buf.len() - l)
@@ -79,7 +78,7 @@ pub enum QueryValues {
 }
 
 impl CqlEncode for QueryValues {
-    fn encode(&self, _v: ProtocolVersion, buf: &mut Vec<u8>) -> Result<usize> {
+    fn encode(&self, _v: ProtocolVersion, buf: &mut BytesMut) -> Result<usize> {
         use self::QueryValues::*;
         let len = buf.len();
 
@@ -117,12 +116,12 @@ pub struct QueryMessage {
 }
 
 impl CqlEncode for QueryMessage {
-    fn encode(&self, version: ProtocolVersion, buf: &mut Vec<u8>) -> Result<usize> {
+    fn encode(&self, version: ProtocolVersion, buf: &mut BytesMut) -> Result<usize> {
         let l = buf.len();
         encode::long_string(&self.query, buf);
         buf.extend(&encode::consistency(&self.consistency)[..]);
 
-        buf.push(self.compute_flags());
+        buf.put_u8(self.compute_flags());
 
         self.values.as_ref().map(|v| v.encode(version, buf));
         self.page_size.map(|v| buf.extend(&encode::int(v)[..]));
@@ -186,7 +185,7 @@ impl Message {
 }
 
 impl CqlEncode for Message {
-    fn encode(&self, v: ProtocolVersion, buf: &mut Vec<u8>) -> Result<usize> {
+    fn encode(&self, v: ProtocolVersion, buf: &mut BytesMut) -> Result<usize> {
         match *self {
             Message::Options => Ok(0),
             Message::Startup(ref msg) => msg.encode(v, buf),
@@ -200,9 +199,9 @@ pub fn cql_encode(version: ProtocolVersion,
                   flags: u8,
                   stream_id: u16,
                   to_encode: Message,
-                  sink: &mut Vec<u8>)
+                  sink: &mut BytesMut)
                   -> Result<()> {
-    sink.resize(Header::encoded_len(), 0);
+    sink.put(&[0; ::codec::header::HEADER_LENGTH][..]);
 
     let len = to_encode.encode(version, sink)?;
     if len > u32::max_value() as usize {
@@ -219,7 +218,7 @@ pub fn cql_encode(version: ProtocolVersion,
     };
 
     let header_bytes = header.encode()?;
-    sink[0..Header::encoded_len()].copy_from_slice(&header_bytes);
+    sink[0..::codec::header::HEADER_LENGTH].copy_from_slice(&header_bytes);
 
     Ok(())
 }
@@ -232,12 +231,13 @@ mod test {
     use codec::primitives::{CqlConsistency, CqlFrom, CqlBytes};
     use codec::authentication::Authenticator;
     use std::collections::HashMap;
+    use bytes::BytesMut;
 
     #[test]
     fn from_options_request() {
         let o = Message::Options;
 
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         let flags = 0;
         let stream_id = 270;
         cql_encode(Version3, flags, stream_id, o, &mut buf).unwrap();
@@ -254,7 +254,7 @@ mod test {
                                      compression: None,
                                  });
 
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         let flags = 0;
         let stream_id = 1;
         cql_encode(Version3, flags, stream_id, o, &mut buf).unwrap();
@@ -271,14 +271,14 @@ mod test {
             password: String::from("123456789asdfghjklqwertyuiopzx"),
         };
 
-        let mut v = Vec::new();
+        let mut v = BytesMut::with_capacity(64);
         a.encode_auth_response(&mut v);
 
         println!("v.len() = {:?}", v.len());
 
         let o = Message::AuthResponse(AuthResponseMessage { auth_data: CqlBytes::try_from(v).unwrap() });
 
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         let flags = 0;
         let stream_id = 2;
         cql_encode(Version3, flags, stream_id, o, &mut buf).unwrap();
@@ -290,7 +290,7 @@ mod test {
 
     #[test]
     fn from_query_req() {
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         let flags = 0;
         let stream_id = 2;
 
@@ -345,7 +345,7 @@ mod test {
         let values = vec![cql_bytes!(0u8, 1), CqlBytes::try_from(vec![2u8, 3]).unwrap()];
         let values = QueryValues::Positional(values);
 
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         values.encode(Version3, &mut buf).unwrap();
 
         let expected = vec![0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x02, 0x03];
@@ -363,7 +363,7 @@ mod test {
 
         let values = QueryValues::Named(values);
 
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         values.encode(Version3, &mut buf).unwrap();
 
         let expected = vec![0x00, 0x01, 0x00, 0x01, 97, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01];

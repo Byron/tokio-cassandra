@@ -3,22 +3,22 @@ use super::*;
 use codec::primitives::{CqlFrom, CqlString, CqlBytes, CqlStringList, CqlStringMultiMap};
 use codec::header::ProtocolVersion;
 use codec::primitives::decode;
-use tokio_core::io::EasyBuf;
+use bytes::BytesMut;
 use semver::Version;
 
 #[derive(Debug)]
-pub struct SupportedMessage(pub CqlStringMultiMap<EasyBuf>);
+pub struct SupportedMessage(pub CqlStringMultiMap<BytesMut>);
 
 impl SupportedMessage {
-    pub fn cql_versions(&self) -> Option<&CqlStringList<EasyBuf>> {
+    pub fn cql_versions(&self) -> Option<&CqlStringList<BytesMut>> {
         self.0.get(unsafe { &CqlString::unchecked_from("CQL_VERSION") })
     }
 
-    pub fn compression(&self) -> Option<&CqlStringList<EasyBuf>> {
+    pub fn compression(&self) -> Option<&CqlStringList<BytesMut>> {
         self.0.get(unsafe { &CqlString::unchecked_from("COMPRESSION") })
     }
 
-    pub fn latest_cql_version(&self) -> Option<&CqlString<EasyBuf>> {
+    pub fn latest_cql_version(&self) -> Option<&CqlString<BytesMut>> {
         self.cql_versions().and_then(|lst| {
                                          lst.iter()
                                              .filter_map(|v| Version::parse(v.as_ref()).ok().map(|vp| (vp, v)))
@@ -29,26 +29,26 @@ impl SupportedMessage {
 }
 
 impl CqlDecode<SupportedMessage> for SupportedMessage {
-    fn decode(_v: ProtocolVersion, buf: ::tokio_core::io::EasyBuf) -> Result<SupportedMessage> {
+    fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<SupportedMessage> {
         decode::string_multimap(buf).map(|d| d.1.into()).map_err(|err| {
                                                                      ErrorKind::ParserError(format!("{}", err)).into()
                                                                  })
     }
 }
 
-impl From<CqlStringMultiMap<::tokio_core::io::EasyBuf>> for SupportedMessage {
-    fn from(v: CqlStringMultiMap<::tokio_core::io::EasyBuf>) -> Self {
+impl From<CqlStringMultiMap<BytesMut>> for SupportedMessage {
+    fn from(v: CqlStringMultiMap<BytesMut>) -> Self {
         SupportedMessage(v)
     }
 }
 
 #[derive(Debug)]
 pub struct AuthenticateMessage {
-    pub authenticator: CqlString<EasyBuf>,
+    pub authenticator: CqlString<BytesMut>,
 }
 
 impl CqlDecode<AuthenticateMessage> for AuthenticateMessage {
-    fn decode(_v: ProtocolVersion, buf: ::tokio_core::io::EasyBuf) -> Result<AuthenticateMessage> {
+    fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<AuthenticateMessage> {
         decode::string(buf)
             .map(|d| AuthenticateMessage { authenticator: d.1 })
             .map_err(|err| ErrorKind::ParserError(format!("{}", err)).into())
@@ -57,11 +57,11 @@ impl CqlDecode<AuthenticateMessage> for AuthenticateMessage {
 
 #[derive(Debug)]
 pub struct AuthSuccessMessage {
-    pub payload: CqlBytes<EasyBuf>,
+    pub payload: CqlBytes<BytesMut>,
 }
 
 impl CqlDecode<AuthSuccessMessage> for AuthSuccessMessage {
-    fn decode(_v: ProtocolVersion, buf: ::tokio_core::io::EasyBuf) -> Result<AuthSuccessMessage> {
+    fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<AuthSuccessMessage> {
         decode::bytes(buf).map(|d| AuthSuccessMessage { payload: d.1 }).map_err(|err| {
                                                                                     ErrorKind::ParserError(format!("{}",
                                                                                                                    err))
@@ -73,11 +73,11 @@ impl CqlDecode<AuthSuccessMessage> for AuthSuccessMessage {
 #[derive(Debug)]
 pub struct ErrorMessage {
     pub code: i32,
-    pub text: CqlString<EasyBuf>,
+    pub text: CqlString<BytesMut>,
 }
 
 impl CqlDecode<ErrorMessage> for ErrorMessage {
-    fn decode(_v: ProtocolVersion, buf: ::tokio_core::io::EasyBuf) -> Result<ErrorMessage> {
+    fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<ErrorMessage> {
         let (buf, code) = decode::int(buf)?;
         let (_, text) = decode::string(buf)?;
         Ok(ErrorMessage {

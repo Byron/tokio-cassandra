@@ -8,7 +8,8 @@ use tokio_proto::util::client_proxy::{Response as ClientProxyResponse, ClientPro
 use tokio_proto::streaming::Message;
 use tokio_proto::streaming::multiplex::ClientProto;
 use tokio_proto::TcpClient;
-use tokio_core::io::{Io, Framed};
+use tokio_io::{AsyncRead, AsyncWrite};
+use tokio_io::codec::Framed;
 use std::io;
 use std::net::SocketAddr;
 use semver;
@@ -25,23 +26,20 @@ pub struct CqlProto {
     pub debug: Option<CqlCodecDebuggingOptions>,
 }
 
-impl<T: Io + 'static> ClientProto<T> for CqlProto {
+impl<T: AsyncRead + AsyncWrite + 'static> ClientProto<T> for CqlProto {
     type Request = request::Message;
     type RequestBody = request::Message;
     type Response = StreamingMessage;
     type ResponseBody = ChunkedMessage;
     type Error = io::Error;
 
-    /// `Framed<T, LineCodec>` is the return value of `io.framed(LineCodec)`
     type Transport = Framed<T, CqlCodec>;
     type BindTransport = io::Result<Self::Transport>;
 
     fn bind_transport(&self, io: T) -> Self::BindTransport {
-        debug!("binding transport!");
         Ok(io.framed(CqlCodec::new(self.version, self.debug.clone().unwrap_or_default())))
     }
 }
-
 
 pub struct ClientHandle {
     inner: Box<Service<Request = RequestMessage,

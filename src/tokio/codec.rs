@@ -3,7 +3,8 @@ use codec::header::{Header, ProtocolVersion, Direction};
 use std::path::PathBuf;
 use std::fs::{File, OpenOptions};
 use tokio_proto::streaming::multiplex::{RequestId, Frame};
-use tokio_core::io::{EasyBuf, Codec};
+use tokio_io::codec::{Decoder, Encoder};
+use bytes::BytesMut;
 use std::{io, mem};
 use std::io::Write;
 use codec::header::OpCode;
@@ -45,9 +46,9 @@ impl CqlCodec {
         }
     }
 
-    fn do_encode_debug(&mut self, buf: &Vec<u8>) -> io::Result<()> {
+    fn do_encode_debug(&mut self, buf: &mut BytesMut) -> io::Result<()> {
         if let Some(path) = self.debug.dump_encoded_frames_into.clone() {
-            let h = Header::try_from(buf.as_slice()).expect("header encoded at beginning of buf");
+            let h = Header::try_from(buf.as_ref()).expect("header encoded at beginning of buf");
             let mut f = open_at(self.debug_path(path, &h))?;
             f.write_all(buf)?;
         }
@@ -63,11 +64,11 @@ impl CqlCodec {
         path
     }
 
-    fn do_decode_debug(&mut self, h: &Header, buf: &EasyBuf, body_len: usize) -> io::Result<()> {
+    fn do_decode_debug(&mut self, h: &Header, buf: &BytesMut, body_len: usize) -> io::Result<()> {
         if let Some(path) = self.debug.dump_decoded_frames_into.clone() {
             let mut f = open_at(self.debug_path(path, h))?;
             f.write_all(&h.encode().expect("header encode to work")[..])?;
-            f.write_all(&buf.as_slice()[..body_len])?;
+            f.write_all(&buf.as_ref()[..body_len])?;
         }
         Ok(())
     }
@@ -89,18 +90,21 @@ fn open_at(path: PathBuf) -> io::Result<File> {
 pub type CodecInputFrame = Frame<StreamingMessage, ChunkedMessage, io::Error>;
 pub type CodecOutputFrame = Frame<request::Message, request::Message, io::Error>;
 
-impl Codec for CqlCodec {
-    type In = CodecInputFrame;
-    type Out = CodecOutputFrame;
-    fn decode(&mut self, buf: &mut EasyBuf) -> io::Result<Option<Self::In>> {
+impl Decoder for CqlCodec {
+    type Item = CodecInputFrame;
+    type Error = io::Error;
+
+    // TODO/ IDEA: Remove io::Error
+
+    fn decode(&mut self, src: &mut BytesMut) -> io::Result<Option<Self::Item>> {
         use self::Machine::*;
         match self.state {
             NeedHeader => {
-                if buf.len() < Header::encoded_len() {
+                if src.len() < Header::encoded_len() {
                     return Ok(None);
                 }
-                let h = Header::try_from(buf.drain_to(Header::encoded_len())
-                        .as_slice()).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+                let h = Header::try_from(src.split_off(Header::encoded_len()).as_ref()
+                            ).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
                 assert!(h.version.direction == Direction::Response,
                         "As a client protocol, I can only handle response decoding");
                 let len = h.length;
@@ -109,17 +113,17 @@ impl Codec for CqlCodec {
                     body_len: len as usize,
                 };
 
-                return self.decode(buf);
+                return self.decode(src);
             }
             WithHeader { body_len, .. } => {
-                if body_len as usize > buf.len() {
+                if body_len as usize > src.len() {
                     return Ok(None);
                 }
                 let h = match mem::replace(&mut self.state, NeedHeader) {
                     WithHeader { header, .. } => header,
                     _ => unreachable!(),
                 };
-                self.do_decode_debug(&h, &buf, body_len)?;
+                self.do_decode_debug(&h, &src, body_len)?;
                 /* TODO: implement version mismatch test */
                 let code = h.op_code.clone();
                 let version = h.version.version;
@@ -127,7 +131,7 @@ impl Codec for CqlCodec {
                 let msg = Frame::Message {
                     id: h.stream_id as RequestId,
                     /* TODO: verify amount of consumed bytes equals the ones actually parsed */
-                    message: decode_complete_message_by_opcode(version, code, buf.drain_to(body_len))
+                    message: decode_complete_message_by_opcode(version, code, src.split_off(body_len))
                         .map_err(io_err)?
                         .into(),
                     body: false,
@@ -138,21 +142,24 @@ impl Codec for CqlCodec {
             }
         }
     }
+}
 
-    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
-        match msg {
+impl Encoder for CqlCodec {
+    type Item = CodecOutputFrame;
+    type Error = io::Error;
+
+    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> io::Result<()> {
+        match item {
             Frame::Message { id, message, .. } => {
                 debug!("encoded msg: {:?}", message);
-                assert!(buf.len() == 0, "expecting an empty vector here");
-
                 assert_stream_id(id as u16);
                 let res = cql_encode(self.version,
                                      self.flags,
                                      id as u16, /* FIXME safe cast */
                                      message,
-                                     buf)
+                                     dst)
                         .map_err(io_err);
-                self.do_encode_debug(buf)?;
+                self.do_encode_debug(dst)?;
                 res
             }
             Frame::Error { error, .. } => Err(error),
@@ -173,7 +180,7 @@ fn assert_stream_id(id: u16) {
 
 fn decode_complete_message_by_opcode(version: ProtocolVersion,
                                      code: OpCode,
-                                     buf: EasyBuf)
+                                     buf: BytesMut)
                                      -> response::Result<response::Message> {
     use codec::header::OpCode::*;
     Ok(match code {

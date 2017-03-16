@@ -1,6 +1,6 @@
 use super::cql_string::CqlString;
 use std::collections::HashMap;
-use tokio_core::io::EasyBuf;
+use bytes::BytesMut;
 use super::*;
 
 
@@ -27,8 +27,8 @@ impl<T> CqlFrom<CqlStringList<T>, Vec<CqlString<T>>> for CqlStringList<T>
     }
 }
 
-impl CqlStringList<EasyBuf> {
-    pub fn try_from_iter_easy<'a, I, E, S>(v: I) -> Result<CqlStringList<EasyBuf>>
+impl CqlStringList<BytesMut> {
+    pub fn try_from_iter_easy<'a, I, E, S>(v: I) -> Result<CqlStringList<BytesMut>>
         where I: IntoIterator<IntoIter = E, Item = S>,
               E: Iterator<Item = S> + ExactSizeIterator,
               S: Into<&'a str>

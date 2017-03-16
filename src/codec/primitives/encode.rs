@@ -1,4 +1,5 @@
 use byteorder::{ByteOrder, BigEndian};
+use bytes::BytesMut;
 use super::{CqlStringList, CqlLongString, CqlString, CqlBytes, CqlStringMap, CqlStringMultiMap, CqlConsistency};
 
 pub fn short(v: u16) -> [u8; 2] {
@@ -19,21 +20,21 @@ pub fn long(v: i64) -> [u8; 8] {
     bytes
 }
 
-pub fn string<T>(s: &CqlString<T>, buf: &mut Vec<u8>)
+pub fn string<T>(s: &CqlString<T>, buf: &mut BytesMut)
     where T: AsRef<[u8]> + PartialEq + Eq
 {
     buf.extend(&short(s.len())[..]);
     buf.extend(s.as_bytes());
 }
 
-pub fn long_string<T>(s: &CqlLongString<T>, buf: &mut Vec<u8>)
+pub fn long_string<T>(s: &CqlLongString<T>, buf: &mut BytesMut)
     where T: AsRef<[u8]> + PartialEq + Eq
 {
     buf.extend(&int(s.len())[..]);
     buf.extend(s.as_bytes());
 }
 
-pub fn bytes<T>(b: &CqlBytes<T>, buf: &mut Vec<u8>)
+pub fn bytes<T>(b: &CqlBytes<T>, buf: &mut BytesMut)
     where T: AsRef<[u8]> + PartialEq + Eq
 {
     buf.extend(&int(b.len())[..]);
@@ -42,7 +43,7 @@ pub fn bytes<T>(b: &CqlBytes<T>, buf: &mut Vec<u8>)
     }
 }
 
-pub fn string_list<T>(l: &CqlStringList<T>, buf: &mut Vec<u8>)
+pub fn string_list<T>(l: &CqlStringList<T>, buf: &mut BytesMut)
     where T: AsRef<[u8]> + PartialEq + Eq
 {
     buf.extend(&short(l.len())[..]);
@@ -51,7 +52,7 @@ pub fn string_list<T>(l: &CqlStringList<T>, buf: &mut Vec<u8>)
     }
 }
 
-pub fn string_map<T>(m: &CqlStringMap<T>, buf: &mut Vec<u8>)
+pub fn string_map<T>(m: &CqlStringMap<T>, buf: &mut BytesMut)
     where T: AsRef<[u8]> + PartialEq + Eq
 {
     buf.extend(&short(m.len())[..]);
@@ -61,7 +62,7 @@ pub fn string_map<T>(m: &CqlStringMap<T>, buf: &mut Vec<u8>)
     }
 }
 
-pub fn string_multimap<T>(m: &CqlStringMultiMap<T>, buf: &mut Vec<u8>)
+pub fn string_multimap<T>(m: &CqlStringMultiMap<T>, buf: &mut BytesMut)
     where T: AsRef<[u8]> + PartialEq + Eq
 {
     buf.extend(&short(m.len())[..]);

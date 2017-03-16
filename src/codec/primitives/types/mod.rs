@@ -2,6 +2,7 @@
 use std::convert::AsRef;
 use std::hash::Hash;
 use std::collections::HashMap;
+use bytes::BytesMut;
 
 mod cql_string;
 pub use self::cql_string::*;
@@ -62,6 +63,12 @@ impl<T> HasLength for Vec<T> {
     }
 }
 
+impl HasLength for BytesMut {
+    fn length(&self) -> usize {
+        self.len()
+    }
+}
+
 impl<T, U> HasLength for HashMap<T, U>
     where T: ::std::cmp::Eq + Hash
 {
@@ -75,6 +82,7 @@ impl<T, U> HasLength for HashMap<T, U>
 mod test {
     use super::{CqlFrom, CqlString, CqlStringList, CqlStringMap, CqlStringMultiMap};
     use super::super::{encode, decode};
+    use bytes::BytesMut;
 
     #[test]
     fn short() {
@@ -117,7 +125,7 @@ mod test {
             .collect();
         let sl = CqlStringList::try_from(sl).unwrap();
 
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         encode::string_list(&sl, &mut buf);
         let buf = Vec::from(&buf[..]).into();
 
@@ -133,7 +141,7 @@ mod test {
                                              (CqlString::try_from("a").unwrap(), CqlString::try_from("av").unwrap())])
                     .unwrap();
 
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         encode::string_map(&sm, &mut buf);
         let buf = Vec::from(&buf[..]).into();
 
@@ -151,7 +159,7 @@ mod test {
                                                         (CqlString::try_from("b").unwrap(), csl2)])
                 .unwrap();
 
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         encode::string_multimap(&smm, &mut buf);
         let buf = Vec::from(&buf[..]).into();
 

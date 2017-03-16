@@ -1,9 +1,9 @@
-use tokio_core::io::EasyBuf;
 use byteorder::{ByteOrder, BigEndian};
 use codec::primitives::CqlBytes;
+use bytes::{BufMut, BytesMut};
 
-type Buffer = EasyBuf;
-type InputBuffer = Vec<u8>;
+type Buffer = BytesMut;
+type InputBuffer = BytesMut;
 type BytesLen = i32;
 
 error_chain!{
@@ -20,7 +20,7 @@ error_chain!{
 pub trait CqlSerializable
     where Self: Sized
 {
-    fn deserialize(data: EasyBuf) -> Result<Self>;
+    fn deserialize(data: BytesMut) -> Result<Self>;
     fn serialize(&self, &mut InputBuffer);
     fn bytes_len(&self) -> BytesLen;
 }
@@ -36,8 +36,8 @@ impl CqlSerializable for Ascii {
         buf.extend(self.inner.as_ref());
     }
 
-    fn deserialize(data: EasyBuf) -> Result<Self> {
-        for b in data.as_slice() {
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        for b in data.as_ref() {
             if *b > 127 as u8 {
                 return Err(ErrorKind::InvalidAscii.into());
             }
@@ -63,11 +63,11 @@ impl CqlSerializable for Bigint {
         buf.extend(&bytes[..]);
     }
 
-    fn deserialize(data: EasyBuf) -> Result<Self> {
+    fn deserialize(data: BytesMut) -> Result<Self> {
         if data.len() != 8 {
             return Err(ErrorKind::Incomplete.into());
         }
-        let long = BigEndian::read_i64(data.as_slice());
+        let long = BigEndian::read_i64(data.as_ref());
         Ok(Bigint { inner: long })
     }
 
@@ -87,7 +87,7 @@ impl CqlSerializable for Blob {
         buf.extend(self.inner.as_ref());
     }
 
-    fn deserialize(data: EasyBuf) -> Result<Self> {
+    fn deserialize(data: BytesMut) -> Result<Self> {
         Ok(Blob { inner: data })
     }
 
@@ -104,18 +104,18 @@ struct Boolean {
 impl CqlSerializable for Boolean {
     fn serialize(&self, buf: &mut InputBuffer) {
         if self.inner {
-            buf.push(0x01);
+            buf.put_u8(0x01);
         } else {
-            buf.push(0x00);
+            buf.put_u8(0x00);
         }
     }
 
-    fn deserialize(data: EasyBuf) -> Result<Self> {
+    fn deserialize(data: BytesMut) -> Result<Self> {
         if data.len() != 1 {
             return Err(ErrorKind::Incomplete.into());
         }
 
-        let b = data.as_slice()[0];
+        let b = data.as_ref()[0];
         Ok(Boolean { inner: b != 0x00 })
     }
 
@@ -139,12 +139,12 @@ impl<T: CqlSerializable> CqlSerializable for List<T> {
                     buf.extend(&::codec::primitives::encode::int(item.bytes_len())[..]);
                     item.serialize(buf);
                 }
-                &None => ::codec::primitives::encode::bytes(&CqlBytes::<Vec<u8>>::null_value(), buf),
+                &None => ::codec::primitives::encode::bytes(&CqlBytes::<BytesMut>::null_value(), buf),
             }
         }
     }
 
-    fn deserialize(data: EasyBuf) -> Result<Self> {
+    fn deserialize(data: BytesMut) -> Result<Self> {
         let (data, n) = ::codec::primitives::decode::int(data)?;
         let mut v = Vec::new();
 
@@ -176,7 +176,7 @@ impl CqlSerializable for Varint {
         buf.extend(self.inner.as_ref());
     }
 
-    fn deserialize(data: EasyBuf) -> Result<Self> {
+    fn deserialize(data: BytesMut) -> Result<Self> {
         Ok(Varint { inner: data })
     }
 
@@ -215,7 +215,7 @@ impl CqlSerializable for Decimal {
         self.unscaled.serialize(buf);
     }
 
-    fn deserialize(data: EasyBuf) -> Result<Self> {
+    fn deserialize(data: BytesMut) -> Result<Self> {
         let (data, scale) = ::codec::primitives::decode::int(data)?;
         let unscaled = Varint::deserialize(data)?;
         Ok(Decimal {
@@ -241,7 +241,7 @@ impl CqlSerializable for Double {
         buf.extend(&bytes[..])
     }
 
-    fn deserialize(data: EasyBuf) -> Result<Self> {
+    fn deserialize(data: BytesMut) -> Result<Self> {
         if data.len() < 8 {
             return Err(ErrorKind::Incomplete.into());
         }
@@ -256,11 +256,12 @@ impl CqlSerializable for Double {
 #[cfg(test)]
 mod test_encode_decode {
     use super::*;
+    use bytes::BytesMut;
 
     fn assert_serialization_deserialization<T>(to_encode: T)
         where T: Clone + PartialEq + ::std::fmt::Debug + CqlSerializable
     {
-        let mut encoded = Vec::new();
+        let mut encoded = BytesMut::with_capacity(64);
         to_encode.clone().serialize(&mut encoded);
 
         let decoded = T::deserialize(encoded.into());
@@ -276,7 +277,7 @@ mod test_encode_decode {
     #[test]
     fn ascii_failing() {
         let to_encode = Ascii { inner: vec![0x00, 0x80].into() };
-        let mut encoded = Vec::new();
+        let mut encoded = BytesMut::with_capacity(64);
         to_encode.clone().serialize(&mut encoded);
         let decoded = Ascii::deserialize(encoded.into());
         assert!(decoded.is_err());

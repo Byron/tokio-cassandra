@@ -1,6 +1,6 @@
 use std::fmt::{Formatter, Debug};
 use super::CqlFrom;
-use tokio_core::io::EasyBuf;
+use bytes::BytesMut;
 
 
 #[derive(Clone, PartialEq, Eq)]
@@ -18,18 +18,18 @@ impl<T> Debug for CqlBytes<T>
     }
 }
 
-impl CqlBytes<::tokio_core::io::EasyBuf> {
-    pub fn from(buf: ::tokio_core::io::EasyBuf) -> CqlBytes<::tokio_core::io::EasyBuf> {
+impl CqlBytes<BytesMut> {
+    pub fn from(buf: BytesMut) -> CqlBytes<BytesMut> {
         CqlBytes { buf: Some(buf) }
     }
 
-    pub fn buffer(self) -> Option<EasyBuf> {
+    pub fn buffer(self) -> Option<BytesMut> {
         self.buf
     }
 }
 
-impl<'a> CqlFrom<CqlBytes<EasyBuf>, Vec<u8>> for CqlBytes<EasyBuf> {
-    unsafe fn unchecked_from(vec: Vec<u8>) -> CqlBytes<EasyBuf> {
+impl<'a> CqlFrom<CqlBytes<BytesMut>, Vec<u8>> for CqlBytes<BytesMut> {
+    unsafe fn unchecked_from(vec: Vec<u8>) -> CqlBytes<BytesMut> {
         CqlBytes { buf: Some(vec.into()) }
     }
 
@@ -40,6 +40,16 @@ impl<'a> CqlFrom<CqlBytes<EasyBuf>, Vec<u8>> for CqlBytes<EasyBuf> {
 
 impl<'a> CqlFrom<CqlBytes<Vec<u8>>, Vec<u8>> for CqlBytes<Vec<u8>> {
     unsafe fn unchecked_from(vec: Vec<u8>) -> CqlBytes<Vec<u8>> {
+        CqlBytes { buf: Some(vec) }
+    }
+
+    fn max_len() -> usize {
+        i32::max_value() as usize
+    }
+}
+
+impl<'a> CqlFrom<CqlBytes<BytesMut>, BytesMut> for CqlBytes<BytesMut> {
+    unsafe fn unchecked_from(vec: BytesMut) -> CqlBytes<BytesMut> {
         CqlBytes { buf: Some(vec) }
     }
 
@@ -74,11 +84,12 @@ impl<T> CqlBytes<T>
 mod test {
     use super::*;
     use super::super::super::{encode, decode};
+    use bytes::BytesMut;
 
     #[test]
     fn bytes() {
-        let s = CqlBytes::try_from((0u8..10).collect::<Vec<_>>().into()).unwrap();
-        let mut buf = Vec::new();
+        let s = CqlBytes::try_from((0u8..10).collect::<Vec<_>>()).unwrap();
+        let mut buf = BytesMut::with_capacity(64);
         encode::bytes(&s, &mut buf);
 
         let buf = Vec::from(&buf[..]).into();
@@ -89,7 +100,7 @@ mod test {
     #[test]
     fn null_value() {
         let s = CqlBytes::null_value();
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         encode::bytes(&s, &mut buf);
 
         let buf = Vec::from(&buf[..]).into();

@@ -1,29 +1,29 @@
 use codec::primitives::{CqlFrom, CqlString, CqlBytes};
 use codec::header::ProtocolVersion;
 use codec::primitives::decode;
-use tokio_core::io::EasyBuf;
+use bytes::BytesMut;
 
 use super::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ResultHeader {
     Void,
-    SetKeyspace(CqlString<EasyBuf>),
+    SetKeyspace(CqlString<BytesMut>),
     SchemaChange(SchemaChangePayload),
     Rows(RowsMetadata),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct SchemaChangePayload {
-    change_type: CqlString<EasyBuf>,
-    target: CqlString<EasyBuf>,
-    options: CqlString<EasyBuf>,
+    change_type: CqlString<BytesMut>,
+    target: CqlString<BytesMut>,
+    options: CqlString<BytesMut>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RowsMetadata {
     global_tables_spec: Option<TableSpec>,
-    paging_state: Option<CqlBytes<EasyBuf>>,
+    paging_state: Option<CqlBytes<BytesMut>>,
     no_metadata: bool,
     column_spec: Vec<ColumnSpec>, // TODO: rows_count
 }
@@ -41,26 +41,26 @@ impl Default for RowsMetadata {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TableSpec {
-    keyspace: CqlString<EasyBuf>,
-    table: CqlString<EasyBuf>,
+    keyspace: CqlString<BytesMut>,
+    table: CqlString<BytesMut>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ColumnSpec {
     WithoutGlobalSpec {
         table_spec: TableSpec,
-        name: CqlString<EasyBuf>,
+        name: CqlString<BytesMut>,
         column_type: ColumnType,
     },
     WithGlobalSpec {
-        name: CqlString<EasyBuf>,
+        name: CqlString<BytesMut>,
         column_type: ColumnType,
     },
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ColumnType {
-    Custom(CqlString<EasyBuf>),
+    Custom(CqlString<BytesMut>),
     Ascii,
     Bigint,
     Blob,
@@ -80,18 +80,18 @@ pub enum ColumnType {
     Map(Box<ColumnType>, Box<ColumnType>),
     Set(Box<ColumnType>),
     Udt {
-        keyspace: CqlString<EasyBuf>,
-        name: CqlString<EasyBuf>,
+        keyspace: CqlString<BytesMut>,
+        name: CqlString<BytesMut>,
         fields: Vec<UdtField>,
     },
     Tuple(Vec<ColumnType>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct UdtField(CqlString<EasyBuf>, ColumnType);
+pub struct UdtField(CqlString<BytesMut>, ColumnType);
 
 impl ColumnType {
-    pub fn decode(buf: ::tokio_core::io::EasyBuf) -> decode::ParseResult<Option<ColumnType>> {
+    pub fn decode(buf: BytesMut) -> decode::ParseResult<Option<ColumnType>> {
         Ok(if buf.len() < 2 {
                (buf, None)
            } else {
@@ -180,7 +180,7 @@ impl ColumnType {
 }
 
 impl ResultHeader {
-    pub fn decode(_v: ProtocolVersion, buf: ::tokio_core::io::EasyBuf) -> Result<Option<ResultHeader>> {
+    pub fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<Option<ResultHeader>> {
         if buf.len() < 4 {
             Ok(None)
         } else {
@@ -210,7 +210,7 @@ impl ResultHeader {
         }
     }
 
-    fn decode_schema_change(buf: EasyBuf) -> decode::ParseResult<SchemaChangePayload> {
+    fn decode_schema_change(buf: BytesMut) -> decode::ParseResult<SchemaChangePayload> {
         let (buf, change_type) = decode::string(buf)?;
         let (buf, target) = decode::string(buf)?;
         let (buf, options) = decode::string(buf)?;
@@ -223,7 +223,7 @@ impl ResultHeader {
             }))
     }
 
-    fn decode_rows_metadata(buf: EasyBuf) -> decode::ParseResult<RowsMetadata> {
+    fn decode_rows_metadata(buf: BytesMut) -> decode::ParseResult<RowsMetadata> {
         let (buf, flags) = decode::int(buf)?;
         let (buf, col_count) = decode::int(buf)?;
 

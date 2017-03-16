@@ -1,7 +1,7 @@
 use std::fmt::{Formatter, Debug};
 use super::CqlFrom;
-use tokio_core::io::EasyBuf;
 use std::hash::{Hasher, Hash};
+use bytes::BytesMut;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct CqlString<T>
@@ -44,14 +44,14 @@ impl<T> Hash for CqlString<T>
 }
 
 
-impl CqlString<::tokio_core::io::EasyBuf> {
-    pub fn from(buf: ::tokio_core::io::EasyBuf) -> CqlString<::tokio_core::io::EasyBuf> {
+impl CqlString<BytesMut> {
+    pub fn from(buf: BytesMut) -> CqlString<BytesMut> {
         CqlString { buf: buf }
     }
 }
 
-impl<'a> CqlFrom<CqlString<EasyBuf>, &'a str> for CqlString<EasyBuf> {
-    unsafe fn unchecked_from(s: &str) -> CqlString<EasyBuf> {
+impl<'a> CqlFrom<CqlString<BytesMut>, &'a str> for CqlString<BytesMut> {
+    unsafe fn unchecked_from(s: &str) -> CqlString<BytesMut> {
         let vec = Vec::from(s);
         CqlString { buf: vec.into() }
     }
@@ -84,21 +84,21 @@ impl<T> CqlString<T>
     }
 }
 
-impl From<CqlString<EasyBuf>> for CqlString<Vec<u8>> {
-    fn from(string: CqlString<EasyBuf>) -> CqlString<Vec<u8>> {
-        CqlString { buf: string.buf.into() }
+impl From<CqlString<BytesMut>> for CqlString<Vec<u8>> {
+    fn from(string: CqlString<BytesMut>) -> CqlString<Vec<u8>> {
+        CqlString { buf: string.buf.into_iter().collect() }
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use tokio_core::io::EasyBuf;
+    use bytes::BytesMut;
     use super::super::super::{encode, decode};
 
     #[test]
-    fn from_easybuf_into_vec() {
-        let a: CqlString<EasyBuf> = unsafe { CqlString::unchecked_from("AbC") };
+    fn from_bytesmut_into_vec() {
+        let a: CqlString<BytesMut> = unsafe { CqlString::unchecked_from("AbC") };
         let b: CqlString<Vec<u8>> = a.into();
         assert_eq!("AbC", b.as_ref());
     }
@@ -106,7 +106,7 @@ mod test {
     #[test]
     fn string() {
         let s = cql_string!("Hello üß");
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(10);
         encode::string(&s, &mut buf);
 
         let buf = Vec::from(&buf[..]).into();

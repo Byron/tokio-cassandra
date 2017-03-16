@@ -11,11 +11,13 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-#[macro_use]
 extern crate futures;
 extern crate tokio_core;
 extern crate tokio_service;
 extern crate tokio_proto;
+extern crate tokio_io;
+extern crate bytes;
+
 #[cfg(feature = "with-openssl")]
 extern crate tokio_openssl;
 #[cfg(feature = "with-openssl")]

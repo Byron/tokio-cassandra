@@ -1,4 +1,5 @@
 use codec::header::ProtocolVersion;
+use bytes::BytesMut;
 
 mod result;
 pub use self::result::*;
@@ -36,5 +37,5 @@ pub enum Message {
 }
 
 pub trait CqlDecode<T> {
-    fn decode(v: ProtocolVersion, buf: ::tokio_core::io::EasyBuf) -> Result<T>;
+    fn decode(v: ProtocolVersion, buf: BytesMut) -> Result<T>;
 }

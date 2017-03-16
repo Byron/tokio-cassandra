@@ -1,6 +1,6 @@
 use std::fmt::{Formatter, Debug};
 use super::CqlFrom;
-use tokio_core::io::EasyBuf;
+use bytes::BytesMut;
 use std::hash::{Hasher, Hash};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -37,14 +37,14 @@ impl<T> Hash for CqlLongString<T>
 }
 
 
-impl CqlLongString<::tokio_core::io::EasyBuf> {
-    pub fn from(buf: ::tokio_core::io::EasyBuf) -> CqlLongString<::tokio_core::io::EasyBuf> {
+impl CqlLongString<BytesMut> {
+    pub fn from(buf: BytesMut) -> CqlLongString<BytesMut> {
         CqlLongString { buf: buf }
     }
 }
 
-impl<'a> CqlFrom<CqlLongString<EasyBuf>, &'a str> for CqlLongString<EasyBuf> {
-    unsafe fn unchecked_from(s: &str) -> CqlLongString<EasyBuf> {
+impl<'a> CqlFrom<CqlLongString<BytesMut>, &'a str> for CqlLongString<BytesMut> {
+    unsafe fn unchecked_from(s: &str) -> CqlLongString<BytesMut> {
         let vec = Vec::from(s);
         CqlLongString { buf: vec.into() }
     }
@@ -77,21 +77,21 @@ impl<T> CqlLongString<T>
     }
 }
 
-impl From<CqlLongString<EasyBuf>> for CqlLongString<Vec<u8>> {
-    fn from(string: CqlLongString<EasyBuf>) -> CqlLongString<Vec<u8>> {
-        CqlLongString { buf: string.buf.into() }
+impl From<CqlLongString<BytesMut>> for CqlLongString<Vec<u8>> {
+    fn from(string: CqlLongString<BytesMut>) -> CqlLongString<Vec<u8>> {
+        CqlLongString { buf: string.buf.into_iter().collect() }
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use tokio_core::io::EasyBuf;
+    use bytes::BytesMut;
     use super::super::super::{encode, decode};
 
     #[test]
-    fn from_easybuf_into_vec() {
-        let a: CqlLongString<EasyBuf> = unsafe { CqlLongString::unchecked_from("AbC") };
+    fn from_bytesmut_into_vec() {
+        let a: CqlLongString<BytesMut> = unsafe { CqlLongString::unchecked_from("AbC") };
         let b: CqlLongString<Vec<u8>> = a.into();
         assert_eq!("AbC", b.as_ref());
     }
@@ -99,7 +99,7 @@ mod test {
     #[test]
     fn string() {
         let s = CqlLongString::try_from("Hello üß in a long String").unwrap();
-        let mut buf = Vec::new();
+        let mut buf = BytesMut::with_capacity(64);
         encode::long_string(&s, &mut buf);
 
         let buf = Vec::from(&buf[..]).into();

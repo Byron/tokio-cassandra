@@ -1,4 +1,4 @@
-
+use bytes::{BufMut, BytesMut};
 
 error_chain! {
     errors {
@@ -34,12 +34,12 @@ impl Authenticator {
         }
     }
 
-    pub fn encode_auth_response<'a>(&self, v: &mut Vec<u8>) -> () {
+    pub fn encode_auth_response<'a>(&self, v: &mut BytesMut) -> () {
         match self {
             &Authenticator::PlainTextAuthenticator { username: ref user, password: ref pwd } => {
-                v.push(0x00);
+                v.put_u8(0x00);
                 v.extend(user.as_bytes());
-                v.push(0x00);
+                v.put_u8(0x00);
                 v.extend(pwd.as_bytes());
             }
         }
@@ -51,6 +51,7 @@ impl Authenticator {
 #[cfg(test)]
 mod test {
     use super::*;
+    use bytes::BytesMut;
 
 
     #[test]
@@ -88,7 +89,7 @@ mod test {
             password: String::from("abcpass"),
         };
 
-        let mut encoded = Vec::new();
+        let mut encoded = BytesMut::with_capacity(64);
         auth.encode_auth_response(&mut encoded);
 
         let expected = &[0u8, 97, 98, 99, 117, 115, 101, 114, 0, 97, 98, 99, 112, 97, 115, 115];

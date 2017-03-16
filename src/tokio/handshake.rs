@@ -2,7 +2,7 @@ use codec::request;
 use codec::response;
 use codec::authentication::{Authenticator, Credentials};
 use codec::primitives::{CqlString, CqlBytes, CqlFrom};
-use tokio_core::io::EasyBuf;
+use bytes::BytesMut;
 use tokio_service::Service;
 use futures::{future, Future};
 use semver;
@@ -54,7 +54,7 @@ fn startup_message_from_supported(msg: response::SupportedMessage,
     let startup = {
         request::StartupMessage {
             cql_version:
-                dv.map(|v| CqlString::<EasyBuf>::try_from(&v.to_string()).expect("semver to be unicode compatible"))
+                dv.map(|v| CqlString::<BytesMut>::try_from(&v.to_string()).expect("semver to be unicode compatible"))
                     .or_else(|| msg.latest_cql_version().cloned())
                     .ok_or(ErrorKind::HandshakeError("Expected CQL_VERSION to contain at least one version".into()))?
                     .clone(),
@@ -76,7 +76,7 @@ fn auth_response_from_authenticate(creds: Option<Credentials>,
 
     let authenticator = Authenticator::from_name(msg.authenticator.as_ref(), creds).chain_err(|| "Authenticator Err")?;
 
-    let mut buf = Vec::new();
+    let mut buf = BytesMut::with_capacity(128);
     authenticator.encode_auth_response(&mut buf);
 
     Ok(request::Message::AuthResponse(request::AuthResponseMessage {
