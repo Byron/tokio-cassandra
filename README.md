@@ -32,7 +32,7 @@ A Cassandra Native Protocol 3 implementation using Tokio for IO.
 
 # What we are working on
 
-We are making [work and progress][kanban] transparent by placing cards on the board.
+We are making [work][kanban] and [progress][progress] transparent by placing cards on the board.
 
 # Want to contribute?
 
@@ -52,3 +52,4 @@ extern crate tokio_cassandra;
 ```
 
 [kanban]: https://github.com/nhellwig/tokio-cassandra/projects/2
+[progress]: https://github.com/nhellwig/tokio-cassandra/milestone/2
