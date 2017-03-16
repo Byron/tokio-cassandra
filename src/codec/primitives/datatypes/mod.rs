@@ -229,12 +229,36 @@ impl CqlSerializable for Decimal {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+struct Double {
+    inner: f64,
+}
+
+impl CqlSerializable for Double {
+    fn serialize(&self, buf: &mut InputBuffer) {
+        let mut bytes = [0u8; 8];
+        BigEndian::write_f64(&mut bytes[..], self.inner);
+        buf.extend(&bytes[..])
+    }
+
+    fn deserialize(data: EasyBuf) -> Result<Self> {
+        if data.len() < 8 {
+            return Err(ErrorKind::Incomplete.into());
+        }
+        let v = BigEndian::read_f64(data.as_ref());
+        Ok(Double { inner: v })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        8
+    }
+}
 #[cfg(test)]
 mod test_encode_decode {
     use super::*;
 
     fn assert_serialization_deserialization<T>(to_encode: T)
-        where T: Clone + PartialEq + Eq + ::std::fmt::Debug + CqlSerializable
+        where T: Clone + PartialEq + ::std::fmt::Debug + CqlSerializable
     {
         let mut encoded = Vec::new();
         to_encode.clone().serialize(&mut encoded);
@@ -285,11 +309,13 @@ mod test_encode_decode {
         assert_serialization_deserialization(to_encode);
     }
 
-    //    #[test]
-    //    fn double() {
-    //        let to_encode = Double { inner: 1.23 };
-    //        assert_serialization_deserialization(to_encode);
-    //    }
+    #[test]
+    fn double() {
+        let to_encode = Double { inner: 1.23 };
+        assert_serialization_deserialization(to_encode);
+    }
+
+
     //
     //    #[test]
     //    fn float() {
