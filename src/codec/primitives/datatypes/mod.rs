@@ -233,7 +233,7 @@ impl CqlSerializable for Decimal {
 mod test_encode_decode {
     use super::*;
 
-    fn assert_serde<T>(to_encode: T)
+    fn assert_serialization_deserialization<T>(to_encode: T)
         where T: Clone + PartialEq + Eq + ::std::fmt::Debug + CqlSerializable
     {
         let mut encoded = Vec::new();
@@ -246,7 +246,7 @@ mod test_encode_decode {
     #[test]
     fn ascii() {
         let to_encode = Ascii { inner: vec![0x00, 0x23].into() };
-        assert_serde(to_encode);
+        assert_serialization_deserialization(to_encode);
     }
 
     #[test]
@@ -261,19 +261,19 @@ mod test_encode_decode {
     #[test]
     fn bigint() {
         let to_encode = Bigint { inner: -123456789 };
-        assert_serde(to_encode);
+        assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn blob() {
         let to_encode = Blob { inner: vec![0x00, 0x81].into() };
-        assert_serde(to_encode);
+        assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn boolean() {
         let to_encode = Boolean { inner: false };
-        assert_serde(to_encode);
+        assert_serialization_deserialization(to_encode);
     }
 
     #[test]
@@ -282,13 +282,43 @@ mod test_encode_decode {
             scale: 1,
             unscaled: Varint { inner: vec![0x00, 0x80].into() },
         };
-        assert_serde(to_encode);
+        assert_serialization_deserialization(to_encode);
     }
+
+    //    #[test]
+    //    fn double() {
+    //        let to_encode = Double { inner: 1.23 };
+    //        assert_serialization_deserialization(to_encode);
+    //    }
+    //
+    //    #[test]
+    //    fn float() {
+    //        let to_encode = Float { inner: 1.23 };
+    //        assert_serialization_deserialization(to_encode);
+    //    }
+    //
+    //    #[test]
+    //    fn inet_v4() {
+    //        let to_encode = Inet::Ipv4(Ipv4Addr::new(127, 0, 0, 1));
+    //        assert_serialization_deserialization(to_encode);
+    //    }
+    //
+    //    #[test]
+    //    fn inet_v6() {
+    //        let to_encode = Inet::Ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff));
+    //        assert_serialization_deserialization(to_encode);
+    //    }
+    //
+    //    #[test]
+    //    fn int() {
+    //        let to_encode = Int { inner: 123 };
+    //        assert_serialization_deserialization(to_encode);
+    //    }
 
     #[test]
     fn varint() {
         let to_encode = Varint { inner: vec![0x00, 0x80].into() };
-        assert_serde(to_encode);
+        assert_serialization_deserialization(to_encode);
     }
 
     #[test]
@@ -309,6 +339,6 @@ mod test_encode_decode {
     #[test]
     fn list() {
         let to_encode = List { inner: vec![Some(Boolean { inner: false }), Some(Boolean { inner: true }), None] };
-        assert_serde(to_encode);
+        assert_serialization_deserialization(to_encode);
     }
 }
