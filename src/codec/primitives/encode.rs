@@ -20,41 +20,31 @@ pub fn long(v: i64) -> [u8; 8] {
     bytes
 }
 
-pub fn string<T>(s: &CqlString<T>, buf: &mut BytesMut)
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
+pub fn string(s: &CqlString, buf: &mut BytesMut) {
     buf.extend(&short(s.len())[..]);
     buf.extend(s.as_bytes());
 }
 
-pub fn long_string<T>(s: &CqlLongString<T>, buf: &mut BytesMut)
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
+pub fn long_string(s: &CqlLongString, buf: &mut BytesMut) {
     buf.extend(&int(s.len())[..]);
     buf.extend(s.as_bytes());
 }
 
-pub fn bytes<T>(b: &CqlBytes<T>, buf: &mut BytesMut)
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
+pub fn bytes(b: &CqlBytes, buf: &mut BytesMut) {
     buf.extend(&int(b.len())[..]);
     if let Some(b) = b.as_bytes() {
         buf.extend(b);
     }
 }
 
-pub fn string_list<T>(l: &CqlStringList<T>, buf: &mut BytesMut)
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
+pub fn string_list(l: &CqlStringList, buf: &mut BytesMut) {
     buf.extend(&short(l.len())[..]);
     for s in l.iter() {
         string(s, buf);
     }
 }
 
-pub fn string_map<T>(m: &CqlStringMap<T>, buf: &mut BytesMut)
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
+pub fn string_map(m: &CqlStringMap, buf: &mut BytesMut) {
     buf.extend(&short(m.len())[..]);
     for (k, v) in m.iter() {
         string(k, buf);
@@ -62,9 +52,7 @@ pub fn string_map<T>(m: &CqlStringMap<T>, buf: &mut BytesMut)
     }
 }
 
-pub fn string_multimap<T>(m: &CqlStringMultiMap<T>, buf: &mut BytesMut)
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
+pub fn string_multimap(m: &CqlStringMultiMap, buf: &mut BytesMut) {
     buf.extend(&short(m.len())[..]);
     for (k, lst) in m.iter() {
         string(k, buf);

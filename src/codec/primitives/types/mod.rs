@@ -1,5 +1,3 @@
-
-use std::convert::AsRef;
 use std::hash::Hash;
 use std::collections::HashMap;
 use bytes::BytesMut;

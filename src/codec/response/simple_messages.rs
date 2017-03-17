@@ -7,18 +7,18 @@ use bytes::BytesMut;
 use semver::Version;
 
 #[derive(Debug)]
-pub struct SupportedMessage(pub CqlStringMultiMap<BytesMut>);
+pub struct SupportedMessage(pub CqlStringMultiMap);
 
 impl SupportedMessage {
-    pub fn cql_versions(&self) -> Option<&CqlStringList<BytesMut>> {
+    pub fn cql_versions(&self) -> Option<&CqlStringList> {
         self.0.get(unsafe { &CqlString::unchecked_from("CQL_VERSION") })
     }
 
-    pub fn compression(&self) -> Option<&CqlStringList<BytesMut>> {
+    pub fn compression(&self) -> Option<&CqlStringList> {
         self.0.get(unsafe { &CqlString::unchecked_from("COMPRESSION") })
     }
 
-    pub fn latest_cql_version(&self) -> Option<&CqlString<BytesMut>> {
+    pub fn latest_cql_version(&self) -> Option<&CqlString> {
         self.cql_versions().and_then(|lst| {
                                          lst.iter()
                                              .filter_map(|v| Version::parse(v.as_ref()).ok().map(|vp| (vp, v)))
@@ -36,15 +36,15 @@ impl CqlDecode<SupportedMessage> for SupportedMessage {
     }
 }
 
-impl From<CqlStringMultiMap<BytesMut>> for SupportedMessage {
-    fn from(v: CqlStringMultiMap<BytesMut>) -> Self {
+impl From<CqlStringMultiMap> for SupportedMessage {
+    fn from(v: CqlStringMultiMap) -> Self {
         SupportedMessage(v)
     }
 }
 
 #[derive(Debug)]
 pub struct AuthenticateMessage {
-    pub authenticator: CqlString<BytesMut>,
+    pub authenticator: CqlString,
 }
 
 impl CqlDecode<AuthenticateMessage> for AuthenticateMessage {
@@ -57,7 +57,7 @@ impl CqlDecode<AuthenticateMessage> for AuthenticateMessage {
 
 #[derive(Debug)]
 pub struct AuthSuccessMessage {
-    pub payload: CqlBytes<BytesMut>,
+    pub payload: CqlBytes,
 }
 
 impl CqlDecode<AuthSuccessMessage> for AuthSuccessMessage {
@@ -73,7 +73,7 @@ impl CqlDecode<AuthSuccessMessage> for AuthSuccessMessage {
 #[derive(Debug)]
 pub struct ErrorMessage {
     pub code: i32,
-    pub text: CqlString<BytesMut>,
+    pub text: CqlString,
 }
 
 impl CqlDecode<ErrorMessage> for ErrorMessage {

@@ -62,7 +62,7 @@ pub fn long(mut i: BytesMut) -> ParseResult<i64> {
     Ok((i, long))
 }
 
-pub fn string(buf: BytesMut) -> ParseResult<CqlString<BytesMut>> {
+pub fn string(buf: BytesMut) -> ParseResult<CqlString> {
     let (mut buf, len) = short(buf)?;
     if buf.len() < len as usize {
         return Err(Incomplete(Size(len as usize)));
@@ -71,7 +71,7 @@ pub fn string(buf: BytesMut) -> ParseResult<CqlString<BytesMut>> {
     Ok((buf, str))
 }
 
-pub fn long_string(buf: BytesMut) -> ParseResult<CqlLongString<BytesMut>> {
+pub fn long_string(buf: BytesMut) -> ParseResult<CqlLongString> {
     let (mut buf, len) = int(buf)?;
     if buf.len() < len as usize {
         return Err(Incomplete(Size(len as usize)));
@@ -80,7 +80,7 @@ pub fn long_string(buf: BytesMut) -> ParseResult<CqlLongString<BytesMut>> {
     Ok((buf, str))
 }
 
-pub fn bytes(buf: BytesMut) -> ParseResult<CqlBytes<BytesMut>> {
+pub fn bytes(buf: BytesMut) -> ParseResult<CqlBytes> {
     let (mut buf, len) = int(buf)?;
     if (buf.len() as isize) < len as isize {
         return Err(Incomplete(Size(len as usize)));
@@ -91,7 +91,7 @@ pub fn bytes(buf: BytesMut) -> ParseResult<CqlBytes<BytesMut>> {
     Ok((buf, b))
 }
 
-pub fn string_list(i: BytesMut) -> ParseResult<CqlStringList<BytesMut>> {
+pub fn string_list(i: BytesMut) -> ParseResult<CqlStringList> {
     let (mut buf, len) = short(i)?;
     let mut v = Vec::new();
     for _ in 0..len {
@@ -103,7 +103,7 @@ pub fn string_list(i: BytesMut) -> ParseResult<CqlStringList<BytesMut>> {
     Ok((buf, lst))
 }
 
-pub fn string_map(i: BytesMut) -> ParseResult<CqlStringMap<BytesMut>> {
+pub fn string_map(i: BytesMut) -> ParseResult<CqlStringMap> {
     let (mut buf, len) = short(i)?;
     let mut map = HashMap::new();
 
@@ -118,7 +118,7 @@ pub fn string_map(i: BytesMut) -> ParseResult<CqlStringMap<BytesMut>> {
     Ok((buf, unsafe { CqlStringMap::unchecked_from(map) }))
 }
 
-pub fn string_multimap(i: BytesMut) -> ParseResult<CqlStringMultiMap<BytesMut>> {
+pub fn string_multimap(i: BytesMut) -> ParseResult<CqlStringMultiMap> {
     let (mut buf, len) = short(i)?;
     let mut map = HashMap::new();
 
@@ -217,7 +217,7 @@ mod test {
 
     #[test]
     fn string_incomplete() {
-        let s: CqlString<BytesMut> = CqlString::try_from("hello").unwrap();
+        let s: CqlString = CqlString::try_from("hello").unwrap();
         let mut b = BytesMut::with_capacity(64);
         encode::string(&s, &mut b);
         let e: BytesMut = b.into();

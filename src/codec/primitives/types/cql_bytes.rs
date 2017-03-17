@@ -1,25 +1,14 @@
-use std::fmt::{Formatter, Debug};
 use super::CqlFrom;
 use bytes::BytesMut;
 
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct CqlBytes<T>
-    where T: AsRef<[u8]>
-{
-    buf: Option<T>,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CqlBytes {
+    buf: Option<BytesMut>,
 }
 
-impl<T> Debug for CqlBytes<T>
-    where T: AsRef<[u8]> + Debug
-{
-    fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
-        self.buf.fmt(f)
-    }
-}
-
-impl CqlBytes<BytesMut> {
-    pub fn from(buf: BytesMut) -> CqlBytes<BytesMut> {
+impl CqlBytes {
+    pub fn from(buf: BytesMut) -> CqlBytes {
         CqlBytes { buf: Some(buf) }
     }
 
@@ -28,8 +17,8 @@ impl CqlBytes<BytesMut> {
     }
 }
 
-impl<'a> CqlFrom<CqlBytes<BytesMut>, Vec<u8>> for CqlBytes<BytesMut> {
-    unsafe fn unchecked_from(vec: Vec<u8>) -> CqlBytes<BytesMut> {
+impl<'a> CqlFrom<CqlBytes, Vec<u8>> for CqlBytes {
+    unsafe fn unchecked_from(vec: Vec<u8>) -> CqlBytes {
         CqlBytes { buf: Some(vec.into()) }
     }
 
@@ -38,8 +27,8 @@ impl<'a> CqlFrom<CqlBytes<BytesMut>, Vec<u8>> for CqlBytes<BytesMut> {
     }
 }
 
-impl<'a> CqlFrom<CqlBytes<Vec<u8>>, Vec<u8>> for CqlBytes<Vec<u8>> {
-    unsafe fn unchecked_from(vec: Vec<u8>) -> CqlBytes<Vec<u8>> {
+impl<'a> CqlFrom<CqlBytes, BytesMut> for CqlBytes {
+    unsafe fn unchecked_from(vec: BytesMut) -> CqlBytes {
         CqlBytes { buf: Some(vec) }
     }
 
@@ -48,19 +37,7 @@ impl<'a> CqlFrom<CqlBytes<Vec<u8>>, Vec<u8>> for CqlBytes<Vec<u8>> {
     }
 }
 
-impl<'a> CqlFrom<CqlBytes<BytesMut>, BytesMut> for CqlBytes<BytesMut> {
-    unsafe fn unchecked_from(vec: BytesMut) -> CqlBytes<BytesMut> {
-        CqlBytes { buf: Some(vec) }
-    }
-
-    fn max_len() -> usize {
-        i32::max_value() as usize
-    }
-}
-
-impl<T> CqlBytes<T>
-    where T: AsRef<[u8]>
-{
+impl CqlBytes {
     pub fn len(&self) -> i32 {
         match &self.buf {
             &Some(ref buf) => buf.as_ref().len() as i32,
@@ -75,7 +52,7 @@ impl<T> CqlBytes<T>
         }
     }
 
-    pub fn null_value() -> CqlBytes<T> {
+    pub fn null_value() -> CqlBytes {
         CqlBytes { buf: None }
     }
 }

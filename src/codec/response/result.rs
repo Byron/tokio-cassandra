@@ -8,22 +8,22 @@ use super::*;
 #[derive(Debug, PartialEq, Eq)]
 pub enum ResultHeader {
     Void,
-    SetKeyspace(CqlString<BytesMut>),
+    SetKeyspace(CqlString),
     SchemaChange(SchemaChangePayload),
     Rows(RowsMetadata),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct SchemaChangePayload {
-    change_type: CqlString<BytesMut>,
-    target: CqlString<BytesMut>,
-    options: CqlString<BytesMut>,
+    change_type: CqlString,
+    target: CqlString,
+    options: CqlString,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RowsMetadata {
     global_tables_spec: Option<TableSpec>,
-    paging_state: Option<CqlBytes<BytesMut>>,
+    paging_state: Option<CqlBytes>,
     no_metadata: bool,
     column_spec: Vec<ColumnSpec>, // TODO: rows_count
 }
@@ -41,26 +41,26 @@ impl Default for RowsMetadata {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TableSpec {
-    keyspace: CqlString<BytesMut>,
-    table: CqlString<BytesMut>,
+    keyspace: CqlString,
+    table: CqlString,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ColumnSpec {
     WithoutGlobalSpec {
         table_spec: TableSpec,
-        name: CqlString<BytesMut>,
+        name: CqlString,
         column_type: ColumnType,
     },
     WithGlobalSpec {
-        name: CqlString<BytesMut>,
+        name: CqlString,
         column_type: ColumnType,
     },
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ColumnType {
-    Custom(CqlString<BytesMut>),
+    Custom(CqlString),
     Ascii,
     Bigint,
     Blob,
@@ -80,15 +80,15 @@ pub enum ColumnType {
     Map(Box<ColumnType>, Box<ColumnType>),
     Set(Box<ColumnType>),
     Udt {
-        keyspace: CqlString<BytesMut>,
-        name: CqlString<BytesMut>,
+        keyspace: CqlString,
+        name: CqlString,
         fields: Vec<UdtField>,
     },
     Tuple(Vec<ColumnType>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct UdtField(CqlString<BytesMut>, ColumnType);
+pub struct UdtField(CqlString, ColumnType);
 
 impl ColumnType {
     pub fn decode(buf: BytesMut) -> decode::ParseResult<Option<ColumnType>> {

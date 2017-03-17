@@ -53,11 +53,10 @@ fn startup_message_from_supported(msg: response::SupportedMessage,
                                   -> Result<request::Message> {
     let startup = {
         request::StartupMessage {
-            cql_version:
-                dv.map(|v| CqlString::<BytesMut>::try_from(&v.to_string()).expect("semver to be unicode compatible"))
-                    .or_else(|| msg.latest_cql_version().cloned())
-                    .ok_or(ErrorKind::HandshakeError("Expected CQL_VERSION to contain at least one version".into()))?
-                    .clone(),
+            cql_version: dv.map(|v| CqlString::try_from(&v.to_string()).expect("semver to be unicode compatible"))
+                .or_else(|| msg.latest_cql_version().cloned())
+                .ok_or(ErrorKind::HandshakeError("Expected CQL_VERSION to contain at least one version".into()))?
+                .clone(),
             compression: None,
         }
     };

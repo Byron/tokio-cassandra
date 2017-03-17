@@ -1,26 +1,13 @@
-use std::fmt::{Formatter, Debug};
 use super::CqlFrom;
 use bytes::BytesMut;
 use std::hash::{Hasher, Hash};
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct CqlLongString<T>
-    where T: AsRef<[u8]>
-{
-    buf: T,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CqlLongString {
+    buf: BytesMut,
 }
 
-impl<T> Debug for CqlLongString<T>
-    where T: AsRef<[u8]>
-{
-    fn fmt(&self, f: &mut Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
-        self.as_ref().fmt(f)
-    }
-}
-
-impl<T> AsRef<str> for CqlLongString<T>
-    where T: AsRef<[u8]>
-{
+impl AsRef<str> for CqlLongString {
     fn as_ref(&self) -> &str {
         // FIXME: this is a costly operation - consider unsafe unchecked_from_utf8
         ::std::str::from_utf8(&self.buf.as_ref()).unwrap()
@@ -28,23 +15,21 @@ impl<T> AsRef<str> for CqlLongString<T>
 }
 
 
-impl<T> Hash for CqlLongString<T>
-    where T: AsRef<[u8]>
-{
+impl Hash for CqlLongString {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_ref().hash(state)
     }
 }
 
 
-impl CqlLongString<BytesMut> {
-    pub fn from(buf: BytesMut) -> CqlLongString<BytesMut> {
+impl CqlLongString {
+    pub fn from(buf: BytesMut) -> CqlLongString {
         CqlLongString { buf: buf }
     }
 }
 
-impl<'a> CqlFrom<CqlLongString<BytesMut>, &'a str> for CqlLongString<BytesMut> {
-    unsafe fn unchecked_from(s: &str) -> CqlLongString<BytesMut> {
+impl<'a> CqlFrom<CqlLongString, &'a str> for CqlLongString {
+    unsafe fn unchecked_from(s: &str) -> CqlLongString {
         let vec = Vec::from(s);
         CqlLongString { buf: vec.into() }
     }
@@ -54,20 +39,7 @@ impl<'a> CqlFrom<CqlLongString<BytesMut>, &'a str> for CqlLongString<BytesMut> {
     }
 }
 
-impl<'a> CqlFrom<CqlLongString<Vec<u8>>, &'a str> for CqlLongString<Vec<u8>> {
-    unsafe fn unchecked_from(s: &str) -> CqlLongString<Vec<u8>> {
-        let vec = Vec::from(s);
-        CqlLongString { buf: vec }
-    }
-
-    fn max_len() -> usize {
-        i32::max_value() as usize
-    }
-}
-
-impl<T> CqlLongString<T>
-    where T: AsRef<[u8]>
-{
+impl CqlLongString {
     pub fn len(&self) -> i32 {
         self.buf.as_ref().len() as i32
     }
@@ -77,24 +49,11 @@ impl<T> CqlLongString<T>
     }
 }
 
-impl From<CqlLongString<BytesMut>> for CqlLongString<Vec<u8>> {
-    fn from(string: CqlLongString<BytesMut>) -> CqlLongString<Vec<u8>> {
-        CqlLongString { buf: string.buf.into_iter().collect() }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
     use bytes::BytesMut;
     use super::super::super::{encode, decode};
-
-    #[test]
-    fn from_bytesmut_into_vec() {
-        let a: CqlLongString<BytesMut> = unsafe { CqlLongString::unchecked_from("AbC") };
-        let b: CqlLongString<Vec<u8>> = a.into();
-        assert_eq!("AbC", b.as_ref());
-    }
 
     #[test]
     fn string() {

@@ -139,7 +139,7 @@ impl<T: CqlSerializable> CqlSerializable for List<T> {
                     buf.extend(&::codec::primitives::encode::int(item.bytes_len())[..]);
                     item.serialize(buf);
                 }
-                &None => ::codec::primitives::encode::bytes(&CqlBytes::<BytesMut>::null_value(), buf),
+                &None => ::codec::primitives::encode::bytes(&CqlBytes::null_value(), buf),
             }
         }
     }

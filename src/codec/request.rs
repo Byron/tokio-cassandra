@@ -1,7 +1,7 @@
 use codec::header::{ProtocolVersion, OpCode, Header, Version};
 use std::collections::HashMap;
 
-use codec::primitives::{BVec, CqlConsistency, CqlFrom, CqlStringMap, CqlString, CqlBytes, CqlLongString};
+use codec::primitives::{CqlConsistency, CqlFrom, CqlStringMap, CqlString, CqlBytes, CqlLongString};
 use codec::primitives::encode;
 use bytes::{BufMut, BytesMut};
 
@@ -35,15 +35,15 @@ pub enum Message {
 
 #[derive(Debug)]
 pub struct StartupMessage {
-    pub cql_version: CqlString<BytesMut>,
-    pub compression: Option<CqlString<BytesMut>>,
+    pub cql_version: CqlString,
+    pub compression: Option<CqlString>,
 }
 
 impl CqlEncode for StartupMessage {
     fn encode(&self, _v: ProtocolVersion, buf: &mut BytesMut) -> Result<usize> {
         use codec::primitives::CqlFrom;
 
-        let mut sm: HashMap<CqlString<BytesMut>, CqlString<BytesMut>> = HashMap::new();
+        let mut sm: HashMap<CqlString, CqlString> = HashMap::new();
         sm.insert(unsafe { CqlString::unchecked_from("CQL_VERSION") },
                   self.cql_version.clone());
 
@@ -60,7 +60,7 @@ impl CqlEncode for StartupMessage {
 
 #[derive(Debug)]
 pub struct AuthResponseMessage {
-    pub auth_data: CqlBytes<BVec>,
+    pub auth_data: CqlBytes,
 }
 
 impl CqlEncode for AuthResponseMessage {
@@ -73,8 +73,8 @@ impl CqlEncode for AuthResponseMessage {
 
 #[derive(Debug)]
 pub enum QueryValues {
-    Positional(Vec<CqlBytes<BVec>>),
-    Named(HashMap<CqlString<BVec>, CqlBytes<BVec>>),
+    Positional(Vec<CqlBytes>),
+    Named(HashMap<CqlString, CqlBytes>),
 }
 
 impl CqlEncode for QueryValues {
@@ -105,12 +105,12 @@ impl CqlEncode for QueryValues {
 
 #[derive(Debug)]
 pub struct QueryMessage {
-    pub query: CqlLongString<BVec>,
+    pub query: CqlLongString,
     pub values: Option<QueryValues>,
     pub consistency: CqlConsistency,
     pub skip_metadata: bool,
     pub page_size: Option<i32>,
-    pub paging_state: Option<CqlBytes<BVec>>,
+    pub paging_state: Option<CqlBytes>,
     pub serial_consistency: Option<CqlConsistency>,
     pub timestamp: Option<i64>,
 }

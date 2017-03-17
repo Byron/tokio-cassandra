@@ -1,24 +1,18 @@
 use super::cql_string::CqlString;
 use std::collections::HashMap;
-use bytes::BytesMut;
 use super::*;
-
 
 
 /// TODO: zero copy - implement it as offset to beginning of vec to CqlStrings to prevent Vec
 /// allocation
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct CqlStringList<T>
-    where T: AsRef<[u8]>
-{
-    container: Vec<CqlString<T>>,
+pub struct CqlStringList {
+    container: Vec<CqlString>,
 }
 
 
-impl<T> CqlFrom<CqlStringList<T>, Vec<CqlString<T>>> for CqlStringList<T>
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
-    unsafe fn unchecked_from(lst: Vec<CqlString<T>>) -> CqlStringList<T> {
+impl CqlFrom<CqlStringList, Vec<CqlString>> for CqlStringList {
+    unsafe fn unchecked_from(lst: Vec<CqlString>) -> CqlStringList {
         CqlStringList { container: lst }
     }
 
@@ -27,8 +21,8 @@ impl<T> CqlFrom<CqlStringList<T>, Vec<CqlString<T>>> for CqlStringList<T>
     }
 }
 
-impl CqlStringList<BytesMut> {
-    pub fn try_from_iter_easy<'a, I, E, S>(v: I) -> Result<CqlStringList<BytesMut>>
+impl CqlStringList {
+    pub fn try_from_iter_easy<'a, I, E, S>(v: I) -> Result<CqlStringList>
         where I: IntoIterator<IntoIter = E, Item = S>,
               E: Iterator<Item = S> + ExactSizeIterator,
               S: Into<&'a str>
@@ -42,8 +36,8 @@ impl CqlStringList<BytesMut> {
     }
 }
 
-impl CqlStringList<Vec<u8>> {
-    pub fn try_from_iter<'a, I, E, S>(v: I) -> Result<CqlStringList<Vec<u8>>>
+impl CqlStringList {
+    pub fn try_from_iter<'a, I, E, S>(v: I) -> Result<CqlStringList>
         where I: IntoIterator<IntoIter = E, Item = S>,
               E: Iterator<Item = S> + ExactSizeIterator,
               S: Into<&'a str>
@@ -57,29 +51,23 @@ impl CqlStringList<Vec<u8>> {
     }
 }
 
-impl<T> CqlStringList<T>
-    where T: AsRef<[u8]>
-{
+impl CqlStringList {
     pub fn len(&self) -> u16 {
         self.container.len() as u16
     }
 
-    pub fn iter(&self) -> ::std::slice::Iter<CqlString<T>> {
+    pub fn iter(&self) -> ::std::slice::Iter<CqlString> {
         self.container.iter()
     }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct CqlStringMap<T>
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
-    container: HashMap<CqlString<T>, CqlString<T>>,
+pub struct CqlStringMap {
+    container: HashMap<CqlString, CqlString>,
 }
 
-impl<T> CqlFrom<CqlStringMap<T>, HashMap<CqlString<T>, CqlString<T>>> for CqlStringMap<T>
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
-    unsafe fn unchecked_from(map: HashMap<CqlString<T>, CqlString<T>>) -> CqlStringMap<T> {
+impl CqlFrom<CqlStringMap, HashMap<CqlString, CqlString>> for CqlStringMap {
+    unsafe fn unchecked_from(map: HashMap<CqlString, CqlString>) -> CqlStringMap {
         CqlStringMap { container: map }
     }
 
@@ -88,12 +76,10 @@ impl<T> CqlFrom<CqlStringMap<T>, HashMap<CqlString<T>, CqlString<T>>> for CqlStr
     }
 }
 
-impl<T> CqlStringMap<T>
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
-    pub fn try_from_iter<I, E>(v: I) -> Result<CqlStringMap<T>>
-        where I: IntoIterator<IntoIter = E, Item = (CqlString<T>, CqlString<T>)>,
-              E: Iterator<Item = (CqlString<T>, CqlString<T>)> + ExactSizeIterator
+impl CqlStringMap {
+    pub fn try_from_iter<I, E>(v: I) -> Result<CqlStringMap>
+        where I: IntoIterator<IntoIter = E, Item = (CqlString, CqlString)>,
+              E: Iterator<Item = (CqlString, CqlString)> + ExactSizeIterator
     {
         let v = v.into_iter();
         let mut res = HashMap::with_capacity(v.len());
@@ -107,22 +93,18 @@ impl<T> CqlStringMap<T>
         self.container.len() as u16
     }
 
-    pub fn iter(&self) -> ::std::collections::hash_map::Iter<CqlString<T>, CqlString<T>> {
+    pub fn iter(&self) -> ::std::collections::hash_map::Iter<CqlString, CqlString> {
         self.container.iter()
     }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct CqlStringMultiMap<T>
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
-    container: HashMap<CqlString<T>, CqlStringList<T>>,
+pub struct CqlStringMultiMap {
+    container: HashMap<CqlString, CqlStringList>,
 }
 
-impl<T> CqlFrom<CqlStringMultiMap<T>, HashMap<CqlString<T>, CqlStringList<T>>> for CqlStringMultiMap<T>
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
-    unsafe fn unchecked_from(map: HashMap<CqlString<T>, CqlStringList<T>>) -> CqlStringMultiMap<T> {
+impl CqlFrom<CqlStringMultiMap, HashMap<CqlString, CqlStringList>> for CqlStringMultiMap {
+    unsafe fn unchecked_from(map: HashMap<CqlString, CqlStringList>) -> CqlStringMultiMap {
         CqlStringMultiMap { container: map }
     }
 
@@ -131,12 +113,10 @@ impl<T> CqlFrom<CqlStringMultiMap<T>, HashMap<CqlString<T>, CqlStringList<T>>> f
     }
 }
 
-impl<T> CqlStringMultiMap<T>
-    where T: AsRef<[u8]> + PartialEq + Eq
-{
-    pub fn try_from_iter<I, E>(v: I) -> Result<CqlStringMultiMap<T>>
-        where I: IntoIterator<IntoIter = E, Item = (CqlString<T>, CqlStringList<T>)>,
-              E: Iterator<Item = (CqlString<T>, CqlStringList<T>)> + ExactSizeIterator
+impl CqlStringMultiMap {
+    pub fn try_from_iter<I, E>(v: I) -> Result<CqlStringMultiMap>
+        where I: IntoIterator<IntoIter = E, Item = (CqlString, CqlStringList)>,
+              E: Iterator<Item = (CqlString, CqlStringList)> + ExactSizeIterator
     {
         let v = v.into_iter();
         let mut res = HashMap::with_capacity(v.len());
@@ -150,11 +130,11 @@ impl<T> CqlStringMultiMap<T>
         self.container.len() as u16
     }
 
-    pub fn iter(&self) -> ::std::collections::hash_map::Iter<CqlString<T>, CqlStringList<T>> {
+    pub fn iter(&self) -> ::std::collections::hash_map::Iter<CqlString, CqlStringList> {
         self.container.iter()
     }
 
-    pub fn get(&self, k: &CqlString<T>) -> Option<&CqlStringList<T>> {
+    pub fn get(&self, k: &CqlString) -> Option<&CqlStringList> {
         self.container.get(k)
     }
 }
