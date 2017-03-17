@@ -103,7 +103,7 @@ impl Decoder for CqlCodec {
                 if src.len() < Header::encoded_len() {
                     return Ok(None);
                 }
-                let h = Header::try_from(src.split_off(Header::encoded_len()).as_ref()
+                let h = Header::try_from(src.split_to(Header::encoded_len()).as_ref()
                             ).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
                 assert!(h.version.direction == Direction::Response,
                         "As a client protocol, I can only handle response decoding");
@@ -131,7 +131,7 @@ impl Decoder for CqlCodec {
                 let msg = Frame::Message {
                     id: h.stream_id as RequestId,
                     /* TODO: verify amount of consumed bytes equals the ones actually parsed */
-                    message: decode_complete_message_by_opcode(version, code, src.split_off(body_len))
+                    message: decode_complete_message_by_opcode(version, code, src.split_to(body_len))
                         .map_err(io_err)?
                         .into(),
                     body: false,
