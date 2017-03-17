@@ -102,7 +102,7 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
     core.run(client).chain_err(|| format!("Failed to connect to {}", addr)).and_then(|_client| {
         // FIXME: provide a consuming version stat consumes a string directly into the vec
         // and thus prevents an entirely unnecessary copy
-        let _query = CqlLongString::<Vec<u8>>::try_from(&query)?;
+        let _query = CqlLongString::try_from(&query)?;
 
         let s = io::stdout();
         let mut lio = s.lock();

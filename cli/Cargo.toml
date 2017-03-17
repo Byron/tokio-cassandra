@@ -46,5 +46,8 @@ name = "tcc"
 
 [replace]
 
+[replace."tokio-openssl:0.1.0"]
+git = 'https://github.com/nhellwig/tokio-openssl'
+
 [replace."syntect:1.2.0"]
 git = "https://github.com/Byron/syntect"
