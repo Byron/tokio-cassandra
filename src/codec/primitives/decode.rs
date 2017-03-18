@@ -39,7 +39,6 @@ pub fn short(mut i: BytesMut) -> ParseResult<u16> {
         return Err(Incomplete(Size(2)));
     }
     let databuf = i.split_to(2);
-    // TODO: use bytes crate directly with bytesorder!!!!
     let short = BigEndian::read_u16(databuf.as_ref());
     Ok((i, short))
 }

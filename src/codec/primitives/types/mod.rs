@@ -85,7 +85,8 @@ mod test {
     #[test]
     fn short() {
         let expected: u16 = 342;
-        let buf = encode::short(expected);
+        let mut buf = BytesMut::with_capacity(64);
+        encode::short(expected, &mut buf);
         let buf = Vec::from(&buf[..]).into();
 
         let res = decode::short(buf);
@@ -95,7 +96,8 @@ mod test {
     #[test]
     fn int() {
         let expected: i32 = -342;
-        let buf = encode::int(expected);
+        let mut buf = BytesMut::with_capacity(64);
+        encode::int(expected, &mut buf);
         let buf = Vec::from(&buf[..]).into();
 
         let res = decode::int(buf);
@@ -105,7 +107,8 @@ mod test {
     #[test]
     fn long() {
         let expected: i64 = -342;
-        let buf = encode::long(expected);
+        let mut buf = BytesMut::with_capacity(64);
+        encode::long(expected, &mut buf);
         let buf = Vec::from(&buf[..]).into();
 
         let res = decode::long(buf);

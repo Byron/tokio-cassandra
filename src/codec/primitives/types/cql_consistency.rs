@@ -56,11 +56,13 @@ impl CqlConsistency {
 mod test {
     use super::*;
     use super::super::super::{encode, decode};
+    use bytes::BytesMut;
 
     #[test]
     fn consistency() {
         let c = CqlConsistency::Any;
-        let buf = encode::consistency(&c);
+        let mut buf = BytesMut::with_capacity(1);
+        encode::consistency(&c, &mut buf);
         let buf = Vec::from(&buf[..]).into();
 
         let res = decode::consistency(buf);

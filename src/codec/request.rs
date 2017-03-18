@@ -85,13 +85,13 @@ impl CqlEncode for QueryValues {
         match self {
             &Positional(ref values) => {
                 // TODO: possible overflow return ERR then
-                buf.extend(&encode::short(values.len() as u16)[..]);
+                encode::short(values.len() as u16, buf);
                 for value in values {
                     encode::bytes(value, buf);
                 }
             }
             &Named(ref values) => {
-                buf.extend(&encode::short(values.len() as u16)[..]);
+                encode::short(values.len() as u16, buf);
                 for (key, value) in values {
                     encode::string(key, buf);
                     encode::bytes(value, buf);
@@ -119,15 +119,15 @@ impl CqlEncode for QueryMessage {
     fn encode(&self, version: ProtocolVersion, buf: &mut BytesMut) -> Result<usize> {
         let l = buf.len();
         encode::long_string(&self.query, buf);
-        buf.extend(&encode::consistency(&self.consistency)[..]);
+        encode::consistency(&self.consistency, buf);
 
         buf.put_u8(self.compute_flags());
 
         self.values.as_ref().map(|v| v.encode(version, buf));
-        self.page_size.map(|v| buf.extend(&encode::int(v)[..]));
+        self.page_size.map(|v| encode::int(v, buf));
         self.paging_state.as_ref().map(|v| encode::bytes(v, buf));
-        self.serial_consistency.as_ref().map(|v| buf.extend(&encode::consistency(&v)[..]));
-        self.timestamp.map(|v| buf.extend(&encode::long(v)[..]));
+        self.serial_consistency.as_ref().map(|v| encode::consistency(&v, buf));
+        self.timestamp.map(|v| encode::long(v, buf));
 
         Ok(buf.len() - l)
     }

@@ -2,8 +2,6 @@ use byteorder::{ByteOrder, BigEndian};
 use codec::primitives::CqlBytes;
 use bytes::{BufMut, BytesMut};
 
-type Buffer = BytesMut;
-type InputBuffer = BytesMut;
 type BytesLen = i32;
 
 error_chain!{
@@ -21,18 +19,18 @@ pub trait CqlSerializable
     where Self: Sized
 {
     fn deserialize(data: BytesMut) -> Result<Self>;
-    fn serialize(&self, &mut InputBuffer);
+    fn serialize(&self, &mut BytesMut);
     fn bytes_len(&self) -> BytesLen;
 }
 
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Ascii {
-    inner: Buffer,
+    inner: BytesMut,
 }
 
 impl CqlSerializable for Ascii {
-    fn serialize(&self, buf: &mut InputBuffer) {
+    fn serialize(&self, buf: &mut BytesMut) {
         buf.extend(self.inner.as_ref());
     }
 
@@ -57,7 +55,7 @@ struct Bigint {
 }
 
 impl CqlSerializable for Bigint {
-    fn serialize(&self, buf: &mut InputBuffer) {
+    fn serialize(&self, buf: &mut BytesMut) {
         let mut bytes = [0u8; 8];
         BigEndian::write_i64(&mut bytes[..], self.inner);
         buf.extend(&bytes[..]);
@@ -79,11 +77,11 @@ impl CqlSerializable for Bigint {
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Blob {
-    inner: Buffer,
+    inner: BytesMut,
 }
 
 impl CqlSerializable for Blob {
-    fn serialize(&self, buf: &mut InputBuffer) {
+    fn serialize(&self, buf: &mut BytesMut) {
         buf.extend(self.inner.as_ref());
     }
 
@@ -102,7 +100,7 @@ struct Boolean {
 }
 
 impl CqlSerializable for Boolean {
-    fn serialize(&self, buf: &mut InputBuffer) {
+    fn serialize(&self, buf: &mut BytesMut) {
         if self.inner {
             buf.put_u8(0x01);
         } else {
@@ -131,12 +129,12 @@ struct List<T: CqlSerializable> {
 }
 
 impl<T: CqlSerializable> CqlSerializable for List<T> {
-    fn serialize(&self, buf: &mut InputBuffer) {
-        buf.extend(&::codec::primitives::encode::int(self.inner.len() as BytesLen)[..]);
+    fn serialize(&self, buf: &mut BytesMut) {
+        ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
         for item in &self.inner {
             match item {
                 &Some(ref item) => {
-                    buf.extend(&::codec::primitives::encode::int(item.bytes_len())[..]);
+                    ::codec::primitives::encode::int(item.bytes_len(), buf);
                     item.serialize(buf);
                 }
                 &None => ::codec::primitives::encode::bytes(&CqlBytes::null_value(), buf),
@@ -168,11 +166,11 @@ impl<T: CqlSerializable> CqlSerializable for List<T> {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Varint {
-    inner: Buffer,
+    inner: BytesMut,
 }
 
 impl CqlSerializable for Varint {
-    fn serialize(&self, buf: &mut InputBuffer) {
+    fn serialize(&self, buf: &mut BytesMut) {
         buf.extend(self.inner.as_ref());
     }
 
@@ -210,8 +208,8 @@ struct Decimal {
 }
 
 impl CqlSerializable for Decimal {
-    fn serialize(&self, buf: &mut InputBuffer) {
-        buf.extend(&::codec::primitives::encode::int(self.scale)[..]);
+    fn serialize(&self, buf: &mut BytesMut) {
+        ::codec::primitives::encode::int(self.scale, buf);
         self.unscaled.serialize(buf);
     }
 
@@ -235,7 +233,7 @@ struct Double {
 }
 
 impl CqlSerializable for Double {
-    fn serialize(&self, buf: &mut InputBuffer) {
+    fn serialize(&self, buf: &mut BytesMut) {
         let mut bytes = [0u8; 8];
         BigEndian::write_f64(&mut bytes[..], self.inner);
         buf.extend(&bytes[..])
