@@ -1,6 +1,7 @@
 use byteorder::{ByteOrder, BigEndian};
 use codec::primitives::CqlBytes;
 use bytes::{BufMut, BytesMut};
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 type BytesLen = i32;
 
@@ -249,6 +250,96 @@ impl CqlSerializable for Double {
         8
     }
 }
+
+#[derive(Debug, PartialEq, Clone)]
+struct Float {
+    inner: f32,
+}
+
+impl CqlSerializable for Float {
+    fn serialize(&self, buf: &mut BytesMut) {
+        buf.reserve(4);
+        buf.put_f32::<BigEndian>(self.inner);
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        if data.len() < 4 {
+            return Err(ErrorKind::Incomplete.into());
+        }
+        let v = BigEndian::read_f32(data.as_ref());
+        Ok(Float { inner: v })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        4
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+struct Int {
+    inner: i32,
+}
+
+impl CqlSerializable for Int {
+    fn serialize(&self, buf: &mut BytesMut) {
+        buf.reserve(4);
+        buf.put_i32::<BigEndian>(self.inner);
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        if data.len() < 4 {
+            return Err(ErrorKind::Incomplete.into());
+        }
+        let v = BigEndian::read_i32(data.as_ref());
+        Ok(Int { inner: v })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        4
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum Inet {
+    Ipv4(Ipv4Addr),
+    Ipv6(Ipv6Addr),
+}
+
+impl CqlSerializable for Inet {
+    fn serialize(&self, buf: &mut BytesMut) {
+        match *self {
+            Inet::Ipv4(addr) => buf.extend(&addr.octets()[..]),
+            Inet::Ipv6(addr) => buf.extend(&addr.octets()[..]),
+        }
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        if data.len() < 4 {
+            // FIXME: what if we read in chunks? How to see if ipv4 or ipv6
+            // Should not be a problem actually since we should never get a
+            // chunk here, since we are passing the CqlBytes read
+            return Err(ErrorKind::Incomplete.into());
+        }
+
+        Ok(match data.len() {
+               4 => Inet::Ipv4(Ipv4Addr::from([data[0], data[1], data[2], data[3]])),
+               16 => {
+                   Inet::Ipv6(Ipv6Addr::from([data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+                                              data[8], data[9], data[10], data[11], data[12], data[13], data[14],
+                                              data[15]]))
+               }
+               _ => return Err(ErrorKind::Incomplete.into()),
+           })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        match *self {
+            Inet::Ipv4(_) => 4,
+            Inet::Ipv6(_) => 16,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test_encode_decode {
     use super::*;
@@ -312,30 +403,29 @@ mod test_encode_decode {
         assert_serialization_deserialization(to_encode);
     }
 
+    #[test]
+    fn float() {
+        let to_encode = Float { inner: 1.23 };
+        assert_serialization_deserialization(to_encode);
+    }
 
-    //    #[test]
-    //    fn float() {
-    //        let to_encode = Float { inner: 1.23 };
-    //        assert_serialization_deserialization(to_encode);
-    //    }
-    //
-    //    #[test]
-    //    fn inet_v4() {
-    //        let to_encode = Inet::Ipv4(Ipv4Addr::new(127, 0, 0, 1));
-    //        assert_serialization_deserialization(to_encode);
-    //    }
-    //
-    //    #[test]
-    //    fn inet_v6() {
-    //        let to_encode = Inet::Ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff));
-    //        assert_serialization_deserialization(to_encode);
-    //    }
-    //
-    //    #[test]
-    //    fn int() {
-    //        let to_encode = Int { inner: 123 };
-    //        assert_serialization_deserialization(to_encode);
-    //    }
+    #[test]
+    fn inet_v4() {
+        let to_encode = Inet::Ipv4(Ipv4Addr::new(127, 0, 0, 1));
+        assert_serialization_deserialization(to_encode);
+    }
+
+    #[test]
+    fn inet_v6() {
+        let to_encode = Inet::Ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff));
+        assert_serialization_deserialization(to_encode);
+    }
+
+    #[test]
+    fn int() {
+        let to_encode = Int { inner: 123 };
+        assert_serialization_deserialization(to_encode);
+    }
 
     #[test]
     fn varint() {
