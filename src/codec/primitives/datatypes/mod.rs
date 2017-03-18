@@ -56,9 +56,8 @@ struct Bigint {
 
 impl CqlSerializable for Bigint {
     fn serialize(&self, buf: &mut BytesMut) {
-        let mut bytes = [0u8; 8];
-        BigEndian::write_i64(&mut bytes[..], self.inner);
-        buf.extend(&bytes[..]);
+        buf.reserve(8);
+        buf.put_i64::<BigEndian>(self.inner);
     }
 
     fn deserialize(data: BytesMut) -> Result<Self> {
@@ -234,9 +233,8 @@ struct Double {
 
 impl CqlSerializable for Double {
     fn serialize(&self, buf: &mut BytesMut) {
-        let mut bytes = [0u8; 8];
-        BigEndian::write_f64(&mut bytes[..], self.inner);
-        buf.extend(&bytes[..])
+        buf.reserve(8);
+        buf.put_f64::<BigEndian>(self.inner);
     }
 
     fn deserialize(data: BytesMut) -> Result<Self> {
@@ -315,7 +313,6 @@ mod test_encode_decode {
     }
 
 
-    //
     //    #[test]
     //    fn float() {
     //        let to_encode = Float { inner: 1.23 };
@@ -362,8 +359,14 @@ mod test_encode_decode {
     }
 
     #[test]
-    fn list() {
+    fn list_boolean() {
         let to_encode = List { inner: vec![Some(Boolean { inner: false }), Some(Boolean { inner: true }), None] };
+        assert_serialization_deserialization(to_encode);
+    }
+
+    #[test]
+    fn list_double() {
+        let to_encode = List { inner: vec![Some(Double { inner: 1.23 }), Some(Double { inner: 2.34 })] };
         assert_serialization_deserialization(to_encode);
     }
 }
