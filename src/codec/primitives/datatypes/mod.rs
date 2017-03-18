@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, BigEndian};
 use codec::primitives::CqlBytes;
 use bytes::{BufMut, BytesMut};
 use std::net::{Ipv4Addr, Ipv6Addr};
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::marker::PhantomData;
 
 type BytesLen = i32;
@@ -339,8 +339,6 @@ struct Map<K, V>
     where K: CqlSerializable,
           V: CqlSerializable
 {
-    //    no mapping of null keys here !!!
-    // TODO: write test for that
     //    FIXME: is this a good idea to use BytesMut here?
     inner: HashMap<BytesMut, Option<V>>,
     p: PhantomData<K>,
@@ -405,6 +403,66 @@ impl<K, V> CqlSerializable for Map<K, V>
     }
 }
 
+// Bounds checking needs to be done in constructor
+#[derive(Debug, PartialEq, Eq)]
+struct Set<V>
+    where V: CqlSerializable
+{
+    inner: HashSet<BytesMut>,
+    p: PhantomData<V>,
+}
+
+
+impl<V> Set<V>
+    where V: CqlSerializable
+{
+    pub fn new() -> Self {
+        Set {
+            inner: HashSet::new(),
+            p: PhantomData,
+        }
+    }
+
+    pub fn insert(&mut self, value: V) {
+        //        FIXME: find a good length
+        let mut bytes = BytesMut::with_capacity(128);
+        value.serialize(&mut bytes);
+        self.inner.insert(bytes);
+    }
+}
+
+impl<V> CqlSerializable for Set<V>
+    where V: CqlSerializable
+{
+    fn serialize(&self, buf: &mut BytesMut) {
+        // FIXME: bound checks
+        ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
+
+        for v in &self.inner {
+            // FIXME: bound checks
+            ::codec::primitives::encode::int(v.len() as i32, buf);
+            buf.extend(v);
+        }
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        let (data, n) = ::codec::primitives::decode::int(data)?;
+        let mut s = Set::new();
+        let mut d = data;
+        for _ in 0..n {
+            let (data, v) = deserialize_bytes::<V>(d)?;
+            if let Some(v) = v {
+                s.insert(v);
+            }
+            d = data
+        }
+        Ok(s)
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        self.inner.len() as BytesLen
+    }
+}
 fn serialize_bytes<T>(data: &Option<T>, buf: &mut BytesMut)
     where T: CqlSerializable
 {
@@ -540,10 +598,18 @@ mod test_encode_decode {
         assert_serialization_deserialization(to_encode);
     }
 
-    //    #[test]
-    //    fn set() {
-    //
-    //    }
+    #[test]
+    fn set() {
+        let to_encode = {
+            let mut s = Set::new();
+            s.insert(Int { inner: 1 });
+            s.insert(Int { inner: 2 });
+            s.insert(Int { inner: 3 });
+            s
+        };
+        assert_serialization_deserialization(to_encode);
+    }
+
     //
     //   #[test]
     //   fn text() {
