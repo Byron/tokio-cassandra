@@ -2,6 +2,8 @@ use byteorder::{ByteOrder, BigEndian};
 use codec::primitives::CqlBytes;
 use bytes::{BufMut, BytesMut};
 use std::net::{Ipv4Addr, Ipv6Addr};
+use std::collections::HashMap;
+use std::marker::PhantomData;
 
 type BytesLen = i32;
 
@@ -132,13 +134,7 @@ impl<T: CqlSerializable> CqlSerializable for List<T> {
     fn serialize(&self, buf: &mut BytesMut) {
         ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
         for item in &self.inner {
-            match item {
-                &Some(ref item) => {
-                    ::codec::primitives::encode::int(item.bytes_len(), buf);
-                    item.serialize(buf);
-                }
-                &None => ::codec::primitives::encode::bytes(&CqlBytes::null_value(), buf),
-            }
+            serialize_bytes(item, buf);
         }
     }
 
@@ -148,11 +144,8 @@ impl<T: CqlSerializable> CqlSerializable for List<T> {
 
         let mut d = data;
         for _ in 0..n {
-            let (data, bytes) = ::codec::primitives::decode::bytes(d)?;
-            v.push(match bytes.buffer() {
-                       Some(b) => Some(T::deserialize(b)?),
-                       None => None,
-                   });
+            let (data, item) = deserialize_bytes(d)?;
+            v.push(item);
             d = data
         }
 
@@ -340,16 +333,112 @@ impl CqlSerializable for Inet {
     }
 }
 
+// Bounds checking needs to be done in constructor
+#[derive(Debug, PartialEq, Eq)]
+struct Map<K, V>
+    where K: CqlSerializable,
+          V: CqlSerializable
+{
+    //    no mapping of null keys here !!!
+    // TODO: write test for that
+    //    FIXME: is this a good idea to use BytesMut here?
+    inner: HashMap<BytesMut, Option<V>>,
+    p: PhantomData<K>,
+}
+
+
+impl<K, V> Map<K, V>
+    where K: CqlSerializable,
+          V: CqlSerializable
+{
+    pub fn new() -> Self {
+        Map {
+            inner: HashMap::new(),
+            p: PhantomData,
+        }
+    }
+
+    pub fn insert(&mut self, key: K, value: Option<V>) {
+        //        FIXME: find a good length
+        let mut bytes = BytesMut::with_capacity(128);
+        key.serialize(&mut bytes);
+        self.inner.insert(bytes, value);
+    }
+}
+
+
+impl<K, V> CqlSerializable for Map<K, V>
+    where K: CqlSerializable,
+          V: CqlSerializable
+{
+    fn serialize(&self, buf: &mut BytesMut) {
+        ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
+
+        for (k, v) in &self.inner {
+            // FIXME: bound checks
+            ::codec::primitives::encode::int(k.len() as i32, buf);
+            buf.extend(k);
+            serialize_bytes(v, buf);
+        }
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        let (data, n) = ::codec::primitives::decode::int(data)?;
+        let mut m = Map::new();
+        let mut d = data;
+        for _ in 0..n {
+            let (data, k) = deserialize_bytes::<K>(d)?;
+            let k = match k {
+                Some(k) => k,
+                None => panic!(),
+            };
+
+            let (data, v) = deserialize_bytes::<V>(data)?;
+            m.insert(k, v);
+            d = data
+        }
+        Ok(m)
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        self.inner.len() as BytesLen
+    }
+}
+
+fn serialize_bytes<T>(data: &Option<T>, buf: &mut BytesMut)
+    where T: CqlSerializable
+{
+    match data {
+        &Some(ref item) => {
+            //            FIXME: bounds check
+            ::codec::primitives::encode::int(item.bytes_len(), buf);
+            item.serialize(buf);
+        }
+        &None => ::codec::primitives::encode::bytes(&CqlBytes::null_value(), buf),
+    }
+}
+
+fn deserialize_bytes<T>(buf: BytesMut) -> Result<(BytesMut, Option<T>)>
+    where T: CqlSerializable
+{
+    let (data, bytes) = ::codec::primitives::decode::bytes(buf)?;
+    Ok((data,
+        match bytes.buffer() {
+            Some(b) => Some(T::deserialize(b)?),
+            None => None,
+        }))
+}
+
 #[cfg(test)]
 mod test_encode_decode {
     use super::*;
     use bytes::BytesMut;
 
     fn assert_serialization_deserialization<T>(to_encode: T)
-        where T: Clone + PartialEq + ::std::fmt::Debug + CqlSerializable
+        where T: PartialEq + ::std::fmt::Debug + CqlSerializable
     {
         let mut encoded = BytesMut::with_capacity(64);
-        to_encode.clone().serialize(&mut encoded);
+        to_encode.serialize(&mut encoded);
 
         let decoded = T::deserialize(encoded.into());
         assert_eq!(to_encode, decoded.unwrap());
@@ -428,6 +517,55 @@ mod test_encode_decode {
     }
 
     #[test]
+    fn list_boolean() {
+        let to_encode = List { inner: vec![Some(Boolean { inner: false }), Some(Boolean { inner: true }), None] };
+        assert_serialization_deserialization(to_encode);
+    }
+
+    #[test]
+    fn list_double() {
+        let to_encode = List { inner: vec![Some(Double { inner: 1.23 }), Some(Double { inner: 2.34 })] };
+        assert_serialization_deserialization(to_encode);
+    }
+
+    #[test]
+    fn map() {
+        let to_encode = {
+            let mut m = Map::new();
+            m.insert(Int { inner: 1 }, Some(Boolean { inner: true }));
+            m.insert(Int { inner: 2 }, Some(Boolean { inner: true }));
+            m.insert(Int { inner: 3 }, None);
+            m
+        };
+        assert_serialization_deserialization(to_encode);
+    }
+
+    //    #[test]
+    //    fn set() {
+    //
+    //    }
+    //
+    //   #[test]
+    //   fn text() {
+    //
+    //   }
+    //
+    //   #[test]
+    //   fn timestamp() {
+    //
+    //   }
+    //
+    //    #[test]
+    //    fn uuid() {
+    //
+    //    }
+    //
+    //    #[test]
+    //    fn varchar() {
+    //
+    //    }
+    //
+    #[test]
     fn varint() {
         let to_encode = Varint { inner: vec![0x00, 0x80].into() };
         assert_serialization_deserialization(to_encode);
@@ -447,16 +585,15 @@ mod test_encode_decode {
         assert_eq!(&Varint { inner: vec![0xFF, 0x7F].into() }.to_string(),
                    "-129");
     }
+    //
+    //    #[test]
+    //    fn timeuuid() {
+    //
+    //    }
+    //
+    //    #[test]
+    //    fn tuple() {
+    //
+    //    }
 
-    #[test]
-    fn list_boolean() {
-        let to_encode = List { inner: vec![Some(Boolean { inner: false }), Some(Boolean { inner: true }), None] };
-        assert_serialization_deserialization(to_encode);
-    }
-
-    #[test]
-    fn list_double() {
-        let to_encode = List { inner: vec![Some(Double { inner: 1.23 }), Some(Double { inner: 2.34 })] };
-        assert_serialization_deserialization(to_encode);
-    }
 }
