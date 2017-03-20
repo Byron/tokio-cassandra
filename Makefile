@@ -19,7 +19,7 @@ help:
 	$(info auth-docker-db   | Bring up a backgrounded cassandra database for local usage on 9042, optional TLS, requiring authentication)
 	$(info cert-docker-db   | Bring up a backgrounded cassandra database for local usage on 9042, requiring the client to show a certificate)
 	$(info attach-docker-db | run cassandra in foreground run with type=(tls|auth|plain))
-	$(info fuzz             | try to run cargo-fuzz on the decoder - doesn't work right now)
+	$(info fuzz             | try to run cargo-fuzz on the decoder - doesnt work right now)
 
 toc:
 	doctoc --github --title "A Cassandra Native Protocol 3 implementation using Tokio for IO." README.md
