@@ -1,5 +1,6 @@
 SYNTECT_REPO = .syntect
 ASSETS_SRC = .assets_src
+PACKS_DIR = packs
 
 help:
 	$(info Available Targets)
@@ -17,6 +18,9 @@ $(ASSETS_SRC): $(SYNTECT_REPO)
 	mkdir $@/theme && find $</testdata/Solarized -type f -name "Solarized*" -print0 | xargs -0 -I % cp "%" $@/theme
 
 assets: $(ASSETS_SRC)
+	@mkdir -p $(PACKS_DIR)
+	cd $(SYNTECT_REPO) && cargo run --example gendata -- synpack ../$(ASSETS_SRC)/syntax ../$(PACKS_DIR)/syntax.newlines.packdump ../$(PACKS_DIR)/syntax.nonewlines.packdump 
+	cd $(SYNTECT_REPO) && cargo run --example gendata -- themepack ../$(ASSETS_SRC)/theme ../$(PACKS_DIR)/themes.themedump
 	
 clean:
 	rm -Rf $(ASSETS_SRC)
