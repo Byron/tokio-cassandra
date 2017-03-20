@@ -79,12 +79,19 @@ pub enum ColumnType {
     List(Box<ColumnType>),
     Map(Box<ColumnType>, Box<ColumnType>),
     Set(Box<ColumnType>),
-    Udt {
-        keyspace: CqlString,
-        name: CqlString,
-        fields: Vec<UdtField>,
-    },
-    Tuple(Vec<ColumnType>),
+    Udt(UdtDefinition),
+    Tuple(TupleDefinition),
+}
+
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TupleDefinition(Vec<ColumnType>);
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct UdtDefinition {
+    keyspace: CqlString,
+    name: CqlString,
+    fields: Vec<UdtField>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -149,11 +156,11 @@ impl ColumnType {
                     b = buf
                 }
                 (b,
-                 Some(ColumnType::Udt {
-                          keyspace: ks,
-                          name: name,
-                          fields: fields,
-                      }))
+                 Some(ColumnType::Udt(UdtDefinition {
+                                          keyspace: ks,
+                                          name: name,
+                                          fields: fields,
+                                      })))
             }
 
                    0x0031 => {
@@ -170,7 +177,7 @@ impl ColumnType {
                     }
                     b = buf
                 }
-                (b, Some(ColumnType::Tuple(fields)))
+                (b, Some(ColumnType::Tuple(TupleDefinition(fields))))
             }
 
                    _ => unimplemented!(),
@@ -630,11 +637,11 @@ mod test {
         let fields = vec![UdtField(cql_string!("f1"), ColumnType::Decimal),
                           UdtField(cql_string!("f2"), ColumnType::Varchar)];
 
-        let exp = ColumnType::Udt {
-            keyspace: cql_string!("ks"),
-            name: cql_string!("udt"),
-            fields: fields,
-        };
+        let exp = ColumnType::Udt(UdtDefinition {
+                                      keyspace: cql_string!("ks"),
+                                      name: cql_string!("udt"),
+                                      fields: fields,
+                                  });
         assert_eq!(res.1, Some(exp));
     }
 
@@ -642,7 +649,7 @@ mod test {
     fn decode_column_type_tuple() {
         let buf = vec![0x00, 0x31, 0x00, 0x02, 0x00, 0x0D, 0x00, 0x06];
         let res = ColumnType::decode(buf.into()).unwrap();
-        let exp = ColumnType::Tuple(vec![ColumnType::Varchar, ColumnType::Decimal]);
+        let exp = ColumnType::Tuple(TupleDefinition(vec![ColumnType::Varchar, ColumnType::Decimal]));
         assert_eq!(res.1, Some(exp));
     }
 }

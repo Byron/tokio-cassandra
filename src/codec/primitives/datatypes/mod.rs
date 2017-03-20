@@ -734,11 +734,13 @@ mod test_encode_decode {
         assert_serialization_deserialization(to_encode);
     }
 
-    //        #[test]
-    //        fn tuple() {
-    //            let to_encode = Tuple<Text, Decimal, Varint> { inner:  };
-    //            assert_serialization_deserialization(to_encode);
-    //        }
+    #[test]
+    fn tuple() {
+        //                let to_encode = Tuple {
+        //                    inner: vec![]
+        //                };
+        //                assert_serialization_deserialization(to_encode);
+    }
 
     //    UDT
 }
