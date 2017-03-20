@@ -1,5 +1,4 @@
-use byteorder::BigEndian;
-use bytes::{BufMut, BytesMut};
+use bytes::{BufMut, BytesMut, BigEndian};
 use super::{CqlStringList, CqlLongString, CqlString, CqlBytes, CqlStringMap, CqlStringMultiMap, CqlConsistency};
 
 pub fn short(v: u16, buf: &mut BytesMut) {

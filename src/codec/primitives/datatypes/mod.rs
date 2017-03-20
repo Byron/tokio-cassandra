@@ -28,7 +28,7 @@ pub trait CqlSerializable
 
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct Ascii {
+pub struct Ascii {
     inner: BytesMut,
 }
 
@@ -53,7 +53,7 @@ impl CqlSerializable for Ascii {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct Bigint {
+pub struct Bigint {
     inner: i64,
 }
 
@@ -78,7 +78,7 @@ impl CqlSerializable for Bigint {
 
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct Blob {
+pub struct Blob {
     inner: BytesMut,
 }
 
@@ -97,7 +97,7 @@ impl CqlSerializable for Blob {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct Boolean {
+pub struct Boolean {
     inner: bool,
 }
 
@@ -126,7 +126,7 @@ impl CqlSerializable for Boolean {
 
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct List<T: CqlSerializable> {
+pub struct List<T: CqlSerializable> {
     inner: Vec<Option<T>>,
 }
 
@@ -158,7 +158,7 @@ impl<T: CqlSerializable> CqlSerializable for List<T> {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct Varint {
+pub struct Varint {
     inner: BytesMut,
 }
 
@@ -269,7 +269,7 @@ impl CqlSerializable for Float {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct Int {
+pub struct Int {
     inner: i32,
 }
 
@@ -293,7 +293,7 @@ impl CqlSerializable for Int {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum Inet {
+pub enum Inet {
     Ipv4(Ipv4Addr),
     Ipv6(Ipv6Addr),
 }
@@ -335,7 +335,7 @@ impl CqlSerializable for Inet {
 
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq)]
-struct Map<K, V>
+pub struct Map<K, V>
     where K: CqlSerializable,
           V: CqlSerializable
 {
@@ -405,7 +405,7 @@ impl<K, V> CqlSerializable for Map<K, V>
 
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq)]
-struct Set<V>
+pub struct Set<V>
     where V: CqlSerializable
 {
     inner: HashSet<BytesMut>,
@@ -486,6 +486,79 @@ fn deserialize_bytes<T>(buf: BytesMut) -> Result<(BytesMut, Option<T>)>
             None => None,
         }))
 }
+
+// Bounds-Checking in Constructor
+#[derive(Debug, PartialEq, Clone)]
+pub struct Text {
+    inner: String,
+}
+
+impl CqlSerializable for Text {
+    fn serialize(&self, buf: &mut BytesMut) {
+        buf.extend(self.inner.as_bytes());
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        Ok(Text { inner: String::from(::std::str::from_utf8(data.as_ref()).unwrap()) })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        self.inner.len() as BytesLen
+    }
+}
+
+pub type VarChar = Text;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Timestamp {
+    epoch: i64,
+}
+
+impl CqlSerializable for Timestamp {
+    fn serialize(&self, buf: &mut BytesMut) {
+        buf.reserve(8);
+        buf.put_i64::<BigEndian>(self.epoch);
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        if data.len() != 8 {
+            return Err(ErrorKind::Incomplete.into());
+        }
+        let long = BigEndian::read_i64(data.as_ref());
+        Ok(Timestamp { epoch: long })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        8
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Uuid {
+    inner: [u8; 16],
+}
+
+impl CqlSerializable for Uuid {
+    fn serialize(&self, buf: &mut BytesMut) {
+        buf.reserve(16);
+        buf.put_slice(&self.inner[..])
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        if data.len() != 16 {
+            return Err(ErrorKind::Incomplete.into());
+        }
+        let arr = [data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10],
+                   data[11], data[12], data[13], data[14], data[15]];
+        Ok(Uuid { inner: arr })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        16
+    }
+}
+
+pub type TimeUuid = Uuid;
 
 #[cfg(test)]
 mod test_encode_decode {
@@ -610,27 +683,30 @@ mod test_encode_decode {
         assert_serialization_deserialization(to_encode);
     }
 
-    //
-    //   #[test]
-    //   fn text() {
-    //
-    //   }
-    //
-    //   #[test]
-    //   fn timestamp() {
-    //
-    //   }
-    //
-    //    #[test]
-    //    fn uuid() {
-    //
-    //    }
-    //
-    //    #[test]
-    //    fn varchar() {
-    //
-    //    }
-    //
+    #[test]
+    fn text() {
+        let to_encode = Text { inner: String::from("text") };
+        assert_serialization_deserialization(to_encode);
+    }
+
+    #[test]
+    fn timestamp() {
+        let to_encode = Timestamp { epoch: 12343521 };
+        assert_serialization_deserialization(to_encode);
+    }
+
+    #[test]
+    fn uuid() {
+        let to_encode = Uuid { inner: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] };
+        assert_serialization_deserialization(to_encode);
+    }
+
+    #[test]
+    fn varchar() {
+        let to_encode = VarChar { inner: String::from("text") };
+        assert_serialization_deserialization(to_encode);
+    }
+
     #[test]
     fn varint() {
         let to_encode = Varint { inner: vec![0x00, 0x80].into() };
@@ -651,15 +727,18 @@ mod test_encode_decode {
         assert_eq!(&Varint { inner: vec![0xFF, 0x7F].into() }.to_string(),
                    "-129");
     }
-    //
-    //    #[test]
-    //    fn timeuuid() {
-    //
-    //    }
-    //
-    //    #[test]
-    //    fn tuple() {
-    //
-    //    }
 
+    #[test]
+    fn timeuuid() {
+        let to_encode = TimeUuid { inner: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] };
+        assert_serialization_deserialization(to_encode);
+    }
+
+    //        #[test]
+    //        fn tuple() {
+    //            let to_encode = Tuple<Text, Decimal, Varint> { inner:  };
+    //            assert_serialization_deserialization(to_encode);
+    //        }
+
+    //    UDT
 }
