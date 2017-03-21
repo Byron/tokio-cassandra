@@ -63,7 +63,6 @@ mod test {
 
         let buf = Vec::from(&buf[..]).into();
 
-        println!("buf = {:?}", buf);
         let res = decode::long_string(buf);
         assert_eq!(res.unwrap().1, s);
     }

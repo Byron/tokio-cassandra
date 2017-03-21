@@ -274,8 +274,6 @@ mod test {
         let mut v = BytesMut::with_capacity(64);
         a.encode_auth_response(&mut v);
 
-        println!("v.len() = {:?}", v.len());
-
         let o = Message::AuthResponse(AuthResponseMessage { auth_data: CqlBytes::try_from(v).unwrap() });
 
         let mut buf = BytesMut::with_capacity(64);

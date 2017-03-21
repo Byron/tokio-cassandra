@@ -25,7 +25,8 @@ pub struct RowsMetadata {
     global_tables_spec: Option<TableSpec>,
     paging_state: Option<CqlBytes>,
     no_metadata: bool,
-    column_spec: Vec<ColumnSpec>, // TODO: rows_count
+    column_spec: Vec<ColumnSpec>,
+    rows_count: i32,
 }
 
 impl Default for RowsMetadata {
@@ -35,6 +36,7 @@ impl Default for RowsMetadata {
             paging_state: None,
             no_metadata: false,
             column_spec: Vec::new(),
+            rows_count: 0,
         }
     }
 }
@@ -186,14 +188,34 @@ impl ColumnType {
     }
 }
 
+pub struct Row {
+    raw_cols: Vec<CqlBytes>,
+}
+
+impl Row {
+    fn decode(buf: BytesMut, header: &RowsMetadata) -> Result<(BytesMut, Option<Row>)> {
+        let mut v = Vec::new();
+        let clen = header.column_spec.len();
+
+        let mut b = buf;
+        for _ in 0..clen {
+            let (buf, bytes) = decode::bytes(b)?;
+            v.push(bytes);
+            b = buf
+        }
+
+        Ok((b, Some(Row { raw_cols: v })))
+    }
+}
+
 impl ResultHeader {
-    pub fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<Option<ResultHeader>> {
+    pub fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<(BytesMut, Option<ResultHeader>)> {
         if buf.len() < 4 {
-            Ok(None)
+            Err(ErrorKind::Incomplete(format!("Need 4 bytes for length")).into())
         } else {
             let (buf, t) = decode::int(buf)?;
             match t {
-                0x0001 => Ok(Some(ResultHeader::Void)),
+                0x0001 => Ok((buf, Some(ResultHeader::Void))),
                 0x0002 => Self::match_decode(Self::decode_rows_metadata(buf), |d| ResultHeader::Rows(d)),
                 0x0003 => Self::match_decode(decode::string(buf), |s| ResultHeader::SetKeyspace(s)),
                 0x0005 => {
@@ -202,17 +224,16 @@ impl ResultHeader {
                 }
                 // TODO:
                 // 0x0004    Prepared: result to a PREPARE message.
-                _ => Ok(None),
+                _ => Ok((buf, None)),
             }
         }
     }
 
-    fn match_decode<T, F>(decoded: decode::ParseResult<T>, f: F) -> Result<Option<ResultHeader>>
+    fn match_decode<T, F>(decoded: decode::ParseResult<T>, f: F) -> Result<(BytesMut, Option<ResultHeader>)>
         where F: Fn(T) -> ResultHeader
     {
         match decoded {
-            Ok((_, s)) => Ok(Some(f(s))),
-            Err(decode::Error::Incomplete(_)) => Ok(None),
+            Ok((buf, s)) => Ok((buf, Some(f(s)))),
             Err(a) => Err(a.into()),
         }
     }
@@ -295,6 +316,9 @@ impl ResultHeader {
 
         rows_metadata.column_spec = columns;
 
+        let (b, rows_count) = decode::int(b)?;
+        rows_metadata.rows_count = rows_count;
+
         Ok((b, rows_metadata))
     }
 }
@@ -315,8 +339,8 @@ mod test {
         let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_rows.msg");
         let buf = Vec::from(skip_header(&msg[..]));
 
-        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..5]).into()).unwrap();
-        assert_eq!(res, None);
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..5]).into());
+        assert!(res.is_err());
 
         let rexpected = RowsMetadata {
             global_tables_spec: Some(TableSpec {
@@ -397,20 +421,39 @@ mod test {
                                   name: cql_string!("truncated_at"),
                                   column_type: ColumnType::Map(Box::new(ColumnType::Uuid), Box::new(ColumnType::Blob)),
                               }],
+            rows_count: 1,
         };
 
         let res = ResultHeader::decode(Version3, buf.into()).unwrap();
-        assert_eq!(res, Some(ResultHeader::Rows(rexpected)));
-        // TODO: rest of drained buf should be used for streaming results after that
+        assert_eq!(res.1, Some(ResultHeader::Rows(rexpected)));
     }
+
+    #[test]
+    fn decode_result_body() {
+        let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_rows.msg");
+        let buf = Vec::from(skip_header(&msg[..])).into();
+
+        let (buf, result_header) = ResultHeader::decode(Version3, buf).unwrap();
+
+        if let ResultHeader::Rows(rows_metadata) = result_header.unwrap() {
+            let (buf, row) = Row::decode(buf, &rows_metadata).unwrap();
+            //            let t = row.get_type(0, rows_metadata);
+            //            let t = row.get_name(0, rows_metadata);
+            //            let t = row.get_as_string(0, rows_metadata);
+        } else {
+            panic!("Expected to have rows metadata");
+        }
+    }
+
+    // TODO: write test with chunking of result!!! random chunking?
 
     #[test]
     fn decode_result_header_rows_non_global_spec() {
         let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_rows_non_global_spec.msg");
         let buf = Vec::from(skip_header(&msg[..]));
 
-        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..5]).into()).unwrap();
-        assert_eq!(res, None);
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..5]).into());
+        assert!(res.is_err());
 
         let rexpected = RowsMetadata {
             global_tables_spec: None,
@@ -432,12 +475,13 @@ mod test {
                                   name: cql_string!("bootstrapped"),
                                   column_type: ColumnType::Varchar,
                               }],
+            rows_count: 1,
         };
 
         let buf = buf.into();
         let res = ResultHeader::decode(Version3, buf).unwrap();
 
-        assert_eq!(res, Some(ResultHeader::Rows(rexpected)));
+        assert_eq!(res.1, Some(ResultHeader::Rows(rexpected)));
         // TODO: rest of drained buf should be used for streaming results after that
     }
 
@@ -446,11 +490,11 @@ mod test {
         let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_void.msg");
         let buf = Vec::from(skip_header(&msg[..]));
 
-        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..1]).into()).unwrap();
-        assert_eq!(res, None);
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..1]).into());
+        assert!(res.is_err());
 
         let res = ResultHeader::decode(Version3, buf.into()).unwrap();
-        assert_eq!(res, Some(ResultHeader::Void));
+        assert_eq!(res.1, Some(ResultHeader::Void));
     }
 
     #[test]
@@ -459,14 +503,14 @@ mod test {
         let buf = Vec::from(skip_header(&msg[..]));
 
         // Ok(None) Ok(Some()), Err()
-        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..6]).into()).unwrap();
-        assert_eq!(res, None);
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..6]).into());
+        assert!(res.is_err());
 
-        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..9]).into()).unwrap();
-        assert_eq!(res, None);
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..9]).into());
+        assert!(res.is_err());
 
         let res = ResultHeader::decode(Version3, buf.into()).unwrap();
-        assert_eq!(res, Some(ResultHeader::SetKeyspace(cql_string!("abcd"))));
+        assert_eq!(res.1, Some(ResultHeader::SetKeyspace(cql_string!("abcd"))));
     }
 
     #[test]
@@ -475,11 +519,11 @@ mod test {
         let buf = Vec::from(skip_header(&msg[..]));
 
         // Ok(None) Ok(Some()), Err()
-        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..6]).into()).unwrap();
-        assert_eq!(res, None);
+        let res = ResultHeader::decode(Version3, Vec::from(&buf[0..6]).into());
+        assert!(res.is_err());
 
         let res = ResultHeader::decode(Version3, buf.into()).unwrap();
-        assert_eq!(res,
+        assert_eq!(res.1,
                    Some(ResultHeader::SchemaChange(SchemaChangePayload {
                                                        change_type: cql_string!("change_type"),
                                                        target: cql_string!("target"),
