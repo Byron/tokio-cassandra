@@ -476,6 +476,17 @@ fn serialize_bytes<T>(data: &Option<T>, buf: &mut BytesMut)
     }
 }
 
+fn serialize_bytesmut(data: &Option<BytesMut>, buf: &mut BytesMut) {
+    match data {
+        &Some(ref item) => {
+            //            FIXME: bounds check
+            ::codec::primitives::encode::int(item.len() as BytesLen, buf);
+            buf.extend(item);
+        }
+        &None => ::codec::primitives::encode::bytes(&CqlBytes::null_value(), buf),
+    }
+}
+
 fn deserialize_bytes<T>(buf: BytesMut) -> Result<(BytesMut, Option<T>)>
     where T: CqlSerializable
 {
@@ -485,6 +496,11 @@ fn deserialize_bytes<T>(buf: BytesMut) -> Result<(BytesMut, Option<T>)>
             Some(b) => Some(T::deserialize(b)?),
             None => None,
         }))
+}
+
+fn deserialize_bytesmut(buf: BytesMut) -> Result<(BytesMut, Option<BytesMut>)> {
+    let (data, bytes) = ::codec::primitives::decode::bytes(buf)?;
+    Ok((data, bytes.buffer()))
 }
 
 // Bounds-Checking in Constructor
@@ -559,6 +575,42 @@ impl CqlSerializable for Uuid {
 }
 
 pub type TimeUuid = Uuid;
+
+// Bounds checking needs to be done in constructor
+#[derive(Debug, PartialEq, Eq)]
+pub struct BytesMutCollection {
+    inner: Vec<Option<BytesMut>>,
+}
+
+impl CqlSerializable for BytesMutCollection {
+    fn serialize(&self, buf: &mut BytesMut) {
+        ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
+        for item in &self.inner {
+            serialize_bytesmut(item, buf);
+        }
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        let (data, n) = ::codec::primitives::decode::int(data)?;
+        let mut v = Vec::new();
+
+        let mut d = data;
+        for _ in 0..n {
+            let (data, item) = deserialize_bytesmut(d)?;
+            v.push(item);
+            d = data
+        }
+
+        Ok(BytesMutCollection { inner: v })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        self.inner.len() as BytesLen
+    }
+}
+
+pub type Tuple = BytesMutCollection;
+pub type Udt = BytesMutCollection;
 
 #[cfg(test)]
 mod test_encode_decode {
@@ -736,11 +788,13 @@ mod test_encode_decode {
 
     #[test]
     fn tuple() {
-        //                let to_encode = Tuple {
-        //                    inner: vec![]
-        //                };
-        //                assert_serialization_deserialization(to_encode);
+        let to_encode = Tuple { inner: vec![Some(vec![0x00, 0x80].into()), None, Some(vec![0x00, 0x80].into())] };
+        assert_serialization_deserialization(to_encode);
     }
 
-    //    UDT
+    #[test]
+    fn udt() {
+        let to_encode = Udt { inner: vec![Some(vec![0x00, 0x80].into()), None, Some(vec![0x00, 0x80].into())] };
+        assert_serialization_deserialization(to_encode);
+    }
 }
