@@ -10,6 +10,7 @@ use linefeed::{Completion, Completer, ReadResult, Reader};
 use linefeed::Terminal;
 use tokio_core::reactor::Core;
 use tokio_cassandra::tokio::client::ClientHandle;
+use super::utils::{output_result, OutputFormat};
 
 enum PromptKind {
     Idle,
@@ -40,7 +41,7 @@ fn execute<T: Terminal>(rd: &mut Reader<T>, _client: &mut ClientHandle, core: &m
             Ok(result) => {
                 let s = io::stdout();
                 let mut lio = s.lock();
-                ::serde_yaml::to_writer(&mut lio, &result)?;
+                output_result(&mut lio, &result, OutputFormat::yaml)?;
                 println!();
             }
             Err(err) => {

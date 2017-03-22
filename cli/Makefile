@@ -24,6 +24,6 @@ assets: $(ASSETS_SRC)
 	cd $(SYNTECT_REPO) && cargo run --example gendata -- themepack ../$(ASSETS_SRC)/theme ../$(PACKS_DIR)/themes.themedump
 	
 clean:
-	rm -Rf $(ASSETS_SRC)
+	rm -Rf $(ASSETS_SRC) $(PACKS_DIR)
 	
 	

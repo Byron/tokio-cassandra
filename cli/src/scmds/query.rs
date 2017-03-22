@@ -2,7 +2,7 @@ use clap;
 use linefeed;
 use super::super::args::ConnectionOptions;
 use super::super::errors::*;
-use super::utils::{output_result, OutputFormat, Demo};
+use super::utils::{output_result, Demo};
 use super::shell;
 use tokio_cassandra::codec::primitives::{CqlFrom, CqlLongString};
 use std::fs::File;

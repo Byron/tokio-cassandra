@@ -19,6 +19,8 @@ extern crate dns_lookup;
 extern crate semver;
 #[cfg(feature = "colors")]
 extern crate syntect;
+#[cfg(feature = "colors")]
+extern crate lazy_static;
 
 pub mod errors {
     use std::num::ParseIntError;
