@@ -195,10 +195,21 @@ impl ToString for Varint {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct Decimal {
+pub struct Decimal {
     scale: i32,
     unscaled: Varint,
 }
+
+// TODO: impl From<f64> ...
+// TODO: impl other useful initializers, also for other types
+
+//impl From<(dDecimal {
+//    fn new(unscaled: i64, scale: i32) {
+//       Decimal {
+//           scale
+//       }
+//    }
+//}
 
 impl CqlSerializable for Decimal {
     fn serialize(&self, buf: &mut BytesMut) {
@@ -221,8 +232,14 @@ impl CqlSerializable for Decimal {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct Double {
+pub struct Double {
     inner: f64,
+}
+
+impl Double {
+    pub fn new(f: f64) -> Self {
+        Double { inner: f }
+    }
 }
 
 impl CqlSerializable for Double {
@@ -498,7 +515,7 @@ fn deserialize_bytes<T>(buf: BytesMut) -> Result<(BytesMut, Option<T>)>
 {
     let (data, bytes) = ::codec::primitives::decode::bytes(buf)?;
     Ok((data,
-        match bytes.buffer() {
+        match bytes.as_option() {
             Some(b) => Some(T::deserialize(b)?),
             None => None,
         }))
@@ -506,13 +523,22 @@ fn deserialize_bytes<T>(buf: BytesMut) -> Result<(BytesMut, Option<T>)>
 
 fn deserialize_bytesmut(buf: BytesMut) -> Result<(BytesMut, Option<BytesMut>)> {
     let (data, bytes) = ::codec::primitives::decode::bytes(buf)?;
-    Ok((data, bytes.buffer()))
+    Ok((data, bytes.as_option()))
 }
 
 // Bounds-Checking in Constructor
 #[derive(Debug, PartialEq, Clone)]
 pub struct Text {
     inner: String,
+}
+
+impl<T> From<T> for Text
+    where T: ToString
+{
+    //  FIXME: actually bounds check needed with try_from
+    fn from(str: T) -> Self {
+        Text { inner: str.to_string() }
+    }
 }
 
 impl CqlSerializable for Text {

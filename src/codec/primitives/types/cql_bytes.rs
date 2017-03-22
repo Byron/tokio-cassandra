@@ -12,8 +12,26 @@ impl CqlBytes {
         CqlBytes { buf: Some(buf) }
     }
 
-    pub fn buffer(self) -> Option<BytesMut> {
+    pub fn as_option(self) -> Option<BytesMut> {
         self.buf
+    }
+
+    pub fn len(&self) -> i32 {
+        match &self.buf {
+            &Some(ref buf) => buf.as_ref().len() as i32,
+            &None => -1,
+        }
+    }
+
+    pub fn as_bytes(&self) -> Option<&[u8]> {
+        match &self.buf {
+            &Some(ref buf) => Some(buf.as_ref()),
+            &None => None,
+        }
+    }
+
+    pub fn null_value() -> CqlBytes {
+        CqlBytes { buf: None }
     }
 }
 
@@ -34,26 +52,6 @@ impl<'a> CqlFrom<CqlBytes, BytesMut> for CqlBytes {
 
     fn max_len() -> usize {
         i32::max_value() as usize
-    }
-}
-
-impl CqlBytes {
-    pub fn len(&self) -> i32 {
-        match &self.buf {
-            &Some(ref buf) => buf.as_ref().len() as i32,
-            &None => -1,
-        }
-    }
-
-    pub fn as_bytes(&self) -> Option<&[u8]> {
-        match &self.buf {
-            &Some(ref buf) => Some(buf.as_ref()),
-            &None => None,
-        }
-    }
-
-    pub fn null_value() -> CqlBytes {
-        CqlBytes { buf: None }
     }
 }
 
@@ -83,5 +81,14 @@ mod test {
         let buf = Vec::from(&buf[..]).into();
         let res = decode::bytes(buf);
         assert_eq!(res.unwrap().1, s);
+    }
+
+    #[test]
+    fn as_option() {
+        let s = CqlBytes::null_value();
+        assert_eq!(s.as_option(), None);
+
+        let s = CqlBytes::try_from((0u8..10).collect::<Vec<_>>()).unwrap();
+        assert!(s.as_option().is_some());
     }
 }

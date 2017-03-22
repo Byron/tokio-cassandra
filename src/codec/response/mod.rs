@@ -15,6 +15,7 @@ error_chain! {
         Io(::std::io::Error);
         HeaderError(::codec::header::Error);
         DecodeError(::codec::primitives::decode::Error);
+        DataTypeError(::codec::primitives::datatypes::Error);
     }
 
     errors {
