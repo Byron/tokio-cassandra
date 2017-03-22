@@ -273,6 +273,12 @@ pub struct Int {
     inner: i32,
 }
 
+impl Int {
+    pub fn new(i: i32) -> Self {
+        Int { inner: i }
+    }
+}
+
 impl CqlSerializable for Int {
     fn serialize(&self, buf: &mut BytesMut) {
         buf.reserve(4);
@@ -695,7 +701,7 @@ mod test_encode_decode {
 
     #[test]
     fn int() {
-        let to_encode = Int { inner: 123 };
+        let to_encode = Int::new(123);
         assert_serialization_deserialization(to_encode);
     }
 

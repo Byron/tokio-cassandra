@@ -22,11 +22,11 @@ pub struct SchemaChangePayload {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RowsMetadata {
-    global_tables_spec: Option<TableSpec>,
-    paging_state: Option<CqlBytes>,
-    no_metadata: bool,
-    column_spec: Vec<ColumnSpec>,
-    rows_count: i32,
+    pub global_tables_spec: Option<TableSpec>,
+    pub paging_state: Option<CqlBytes>,
+    pub no_metadata: bool,
+    pub column_spec: Vec<ColumnSpec>,
+    pub rows_count: i32,
 }
 
 impl Default for RowsMetadata {
@@ -185,26 +185,6 @@ impl ColumnType {
                    _ => unimplemented!(),
                }
            })
-    }
-}
-
-pub struct Row {
-    raw_cols: Vec<CqlBytes>,
-}
-
-impl Row {
-    fn decode(buf: BytesMut, header: &RowsMetadata) -> Result<(BytesMut, Option<Row>)> {
-        let mut v = Vec::new();
-        let clen = header.column_spec.len();
-
-        let mut b = buf;
-        for _ in 0..clen {
-            let (buf, bytes) = decode::bytes(b)?;
-            v.push(bytes);
-            b = buf
-        }
-
-        Ok((b, Some(Row { raw_cols: v })))
     }
 }
 

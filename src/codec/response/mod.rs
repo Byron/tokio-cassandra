@@ -4,6 +4,9 @@ use bytes::BytesMut;
 mod result;
 pub use self::result::*;
 
+mod row;
+pub use self::row::*;
+
 mod simple_messages;
 pub use self::simple_messages::*;
 
