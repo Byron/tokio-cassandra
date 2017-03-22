@@ -308,6 +308,8 @@ mod test {
     use codec::header::Header;
     use codec::header::ProtocolVersion::*;
     use codec::primitives::CqlString;
+    use codec::primitives::datatypes::*;
+    use codec::response::ValueAt;
     use super::*;
 
     fn skip_header(b: &[u8]) -> &[u8] {
@@ -415,8 +417,54 @@ mod test {
 
         let (buf, result_header) = ResultHeader::decode(Version3, buf).unwrap();
 
+        #[derive(Debug)]
+        struct RowData {
+            key: Varchar,
+            bootstrapped: Varchar,
+            broadcast_address: Inet,
+            cluster_name: Varchar,
+            cql_version: Varchar,
+            data_center: Varchar,
+            gossip_generation: Int,
+            host_id: Uuid,
+            listen_address: Inet,
+            native_protocol_version: Varchar,
+            partitioner: Varchar,
+            rack: Varchar,
+            release_version: Varchar,
+            rpc_address: Inet,
+            schema_version: Uuid,
+            thrift_version: Varchar,
+            tokens: Set<Varchar>,
+            truncated_at: Map<Uuid, Blob>,
+        }
+
         if let ResultHeader::Rows(rows_metadata) = result_header.unwrap() {
-            let (buf, row) = Row::decode(buf, &rows_metadata).unwrap();
+            let (_, row) = Row::decode(buf, &rows_metadata).unwrap();
+            let row = row.unwrap();
+            let row = RowData {
+                key: row.value_at(0).unwrap(),
+                bootstrapped: row.value_at(1).unwrap(),
+                broadcast_address: row.value_at(2).unwrap(),
+                cluster_name: row.value_at(3).unwrap(),
+                cql_version: row.value_at(4).unwrap(),
+                data_center: row.value_at(5).unwrap(),
+                gossip_generation: row.value_at(6).unwrap(),
+                host_id: row.value_at(7).unwrap(),
+                listen_address: row.value_at(8).unwrap(),
+                native_protocol_version: row.value_at(9).unwrap(),
+                partitioner: row.value_at(10).unwrap(),
+                rack: row.value_at(11).unwrap(),
+                release_version: row.value_at(12).unwrap(),
+                rpc_address: row.value_at(13).unwrap(),
+                schema_version: row.value_at(14).unwrap(),
+                thrift_version: row.value_at(15).unwrap(),
+                tokens: row.value_at(16).unwrap(),
+                truncated_at: row.value_at(17).unwrap(),
+            };
+
+            println!("row = {:?}", row);
+            panic!();
             //            let t = row.get_type(0, rows_metadata);
             //            let t = row.get_name(0, rows_metadata);
             //            let t = row.get_as_string(0, rows_metadata);

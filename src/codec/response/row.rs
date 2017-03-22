@@ -1,6 +1,4 @@
-use codec::primitives::{CqlFrom, CqlString, CqlBytes};
 use codec::primitives::datatypes::CqlSerializable;
-use codec::header::ProtocolVersion;
 use codec::primitives::decode;
 use bytes::BytesMut;
 

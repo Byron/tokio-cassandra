@@ -4,6 +4,7 @@ use bytes::{BufMut, BytesMut};
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::collections::{HashSet, HashMap};
 use std::marker::PhantomData;
+use std::fmt::{Debug, Formatter, Write};
 
 type BytesLen = i32;
 
@@ -427,12 +428,28 @@ impl<K, V> CqlSerializable for Map<K, V>
 }
 
 // Bounds checking needs to be done in constructor
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct Set<V>
     where V: CqlSerializable
 {
     inner: HashSet<BytesMut>,
     p: PhantomData<V>,
+}
+
+impl<V> Debug for Set<V>
+    where V: CqlSerializable + Debug
+{
+    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        for item in &self.inner {
+            let v = V::deserialize(item.clone());
+            match v {
+                Ok(v) => v.fmt(fmt)?,
+                Err(err) => fmt.write_str("[ERROR]")?,
+            }
+            fmt.write_char(',');
+        }
+        Ok(())
+    }
 }
 
 
@@ -555,7 +572,7 @@ impl CqlSerializable for Text {
     }
 }
 
-pub type VarChar = Text;
+pub type Varchar = Text;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Timestamp {
@@ -787,7 +804,7 @@ mod test_encode_decode {
 
     #[test]
     fn varchar() {
-        let to_encode = VarChar { inner: String::from("text") };
+        let to_encode = Varchar { inner: String::from("text") };
         assert_serialization_deserialization(to_encode);
     }
 
