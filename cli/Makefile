@@ -15,6 +15,7 @@ $(SYNTECT_REPO):
 $(ASSETS_SRC): $(SYNTECT_REPO)
 	@rm -Rf $@ && mkdir $@
 	mkdir $@/syntax && cp -R $</testdata/Packages/YAML $@/syntax
+	mkdir $@/syntax/JSON && cp -R $</testdata/Packages/JavaScript/JSON.sublime-syntax $@/syntax/JSON
 	mkdir $@/theme && find $</testdata/Solarized -type f -name "Solarized*" -print0 | xargs -0 -I % cp "%" $@/theme
 
 assets: $(ASSETS_SRC)
