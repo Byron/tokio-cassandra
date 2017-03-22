@@ -463,11 +463,12 @@ mod test {
                 truncated_at: row.value_at(17).unwrap(),
             };
 
-            println!("row = {:?}", row);
-            panic!();
+            //            println!("row = {:?}", row);
+            //            panic!();
             //            let t = row.get_type(0, rows_metadata);
             //            let t = row.get_name(0, rows_metadata);
             //            let t = row.get_as_string(0, rows_metadata);
+            //             TODO: check the result
         } else {
             panic!("Expected to have rows metadata");
         }

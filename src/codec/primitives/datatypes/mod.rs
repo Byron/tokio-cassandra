@@ -358,7 +358,7 @@ impl CqlSerializable for Inet {
 }
 
 // Bounds checking needs to be done in constructor
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct Map<K, V>
     where K: CqlSerializable,
           V: CqlSerializable
@@ -368,6 +368,30 @@ pub struct Map<K, V>
     p: PhantomData<K>,
 }
 
+impl<K, V> Debug for Map<K, V>
+    where V: CqlSerializable + Debug,
+          K: CqlSerializable + Debug
+{
+    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        for (key, value) in &self.inner {
+            let key = K::deserialize(key.clone());
+            match key {
+                Ok(k) => k.fmt(fmt)?,
+                Err(err) => fmt.write_str("[ERROR]")?,
+            }
+
+            fmt.write_str("=>");
+
+            match value.clone() {
+                &Some(ref b) => b.fmt(fmt)?,
+                &None => fmt.write_str("NULL")?,
+            }
+
+            fmt.write_char(',');
+        }
+        Ok(())
+    }
+}
 
 impl<K, V> Map<K, V>
     where K: CqlSerializable,
