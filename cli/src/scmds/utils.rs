@@ -1,6 +1,12 @@
 use super::super::errors::*;
 use std::io::Write;
 use tokio_cassandra::codec::header::Header;
+#[cfg(feature = "colors")]
+use syntect::parsing::SyntaxSet;
+#[cfg(feature = "colors")]
+use syntect::highlighting::ThemeSet;
+#[cfg(feature = "colors")]
+use syntect::dumps::from_binary;
 
 #[derive(Deserialize, Serialize)]
 pub struct Demo {
@@ -29,6 +35,9 @@ arg_enum! {
 }
 
 pub fn output_result<W: Write>(out: &mut W, res: &Demo, fmt: OutputFormat) -> Result<()> {
+    let _syntax_highlighter: SyntaxSet = from_binary(include_bytes!("../../packs/syntax.newlines.packdump"));
+    let _themes: ThemeSet = from_binary(include_bytes!("../../packs/themes.themedump"));
+
     match fmt {
         OutputFormat::json => ::serde_json::ser::to_writer_pretty(out, res)?,
         OutputFormat::yaml => ::serde_yaml::to_writer(out, res)?,
