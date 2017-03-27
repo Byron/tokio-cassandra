@@ -47,6 +47,15 @@ pub struct TableSpec {
     table: CqlString,
 }
 
+impl TableSpec {
+    pub fn new(keyspace: &'static str, table: &'static str) -> Self {
+        TableSpec {
+            keyspace: cql_string!(keyspace),
+            table: cql_string!(table),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ColumnSpec {
     WithoutGlobalSpec {
@@ -58,6 +67,15 @@ pub enum ColumnSpec {
         name: CqlString,
         column_type: ColumnType,
     },
+}
+
+impl ColumnSpec {
+    pub fn coltype(&self) -> &ColumnType {
+        match self {
+            &ColumnSpec::WithoutGlobalSpec { column_type: ref ctype, .. } => ctype,
+            &ColumnSpec::WithGlobalSpec { column_type: ref ctype, .. } => ctype,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -463,17 +481,26 @@ mod test {
                 truncated_at: row.value_at(17).unwrap(),
             };
 
-            //            println!("row = {:?}", row);
-            //            panic!();
-            //            let t = row.get_type(0, rows_metadata);
-            //            let t = row.get_name(0, rows_metadata);
-            //            let t = row.get_as_string(0, rows_metadata);
             //             TODO: check the result
         } else {
             panic!("Expected to have rows metadata");
         }
     }
 
+    //    #[test]
+    //    fn decode_result_body_row_iterator() {
+    //        let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_rows.msg");
+    //        let buf = Vec::from(skip_header(&msg[..])).into();
+    //        let (buf, result_header) = ResultHeader::decode(Version3, buf).unwrap();
+    //
+    //        if let ResultHeader::Rows(rows_metadata) = result_header.unwrap() {
+    //            let (_, row) = Row::decode(buf, &rows_metadata).unwrap();
+    //            let row = row.unwrap();
+    //
+    //        } else {
+    //            panic!("Expected to have rows metadata");
+    //        }
+    //    }
     // TODO: write test with chunking of result!!! random chunking?
 
     #[test]

@@ -12,6 +12,7 @@ error_chain!{
     errors {
         InvalidAscii
         Incomplete
+        MaximumLengthExceeded
     }
 
     foreign_links {
@@ -27,31 +28,26 @@ pub trait CqlSerializable
     fn bytes_len(&self) -> BytesLen;
 }
 
-// Bounds checking needs to be done in constructor
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Ascii {
-    inner: BytesMut,
+pub trait TryFrom<T>
+    where Self: Sized
+{
+    fn try_from(data: T) -> Result<Self>;
 }
 
-impl CqlSerializable for Ascii {
-    fn serialize(&self, buf: &mut BytesMut) {
-        buf.extend(self.inner.as_ref());
-    }
+mod byte;
+pub use self::byte::*;
 
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        for b in data.as_ref() {
-            if *b > 127 as u8 {
-                return Err(ErrorKind::InvalidAscii.into());
-            }
-        }
+mod collections;
+pub use self::collections::*;
 
-        Ok(Ascii { inner: data })
-    }
+mod num;
+pub use self::num::*;
 
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
-    }
-}
+mod text;
+pub use self::text::*;
+
+mod udt;
+pub use self::udt::*;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Bigint {
@@ -573,11 +569,9 @@ pub struct Text {
     inner: String,
 }
 
-impl<T> From<T> for Text
-    where T: ToString
-{
+impl From<&'static str> for Text {
     //  FIXME: actually bounds check needed with try_from
-    fn from(str: T) -> Self {
+    fn from(str: &'static str) -> Self {
         Text { inner: str.to_string() }
     }
 }
@@ -597,6 +591,12 @@ impl CqlSerializable for Text {
 }
 
 pub type Varchar = Text;
+
+impl ::std::fmt::Display for Text {
+    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        ::std::fmt::Display::fmt(&self.inner, fmt)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Timestamp {
@@ -702,13 +702,13 @@ mod test_encode_decode {
 
     #[test]
     fn ascii() {
-        let to_encode = Ascii { inner: vec![0x00, 0x23].into() };
+        let to_encode = Ascii::try_from(vec![0x00, 0x23]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn ascii_failing() {
-        let to_encode = Ascii { inner: vec![0x00, 0x80].into() };
+        let to_encode = Ascii::try_from(vec![0x00, 0x80]).unwrap();
         let mut encoded = BytesMut::with_capacity(64);
         to_encode.clone().serialize(&mut encoded);
         let decoded = Ascii::deserialize(encoded.into());

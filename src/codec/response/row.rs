@@ -1,6 +1,7 @@
-use codec::primitives::datatypes::CqlSerializable;
+use codec::primitives::datatypes::{self, CqlSerializable};
 use codec::primitives::decode;
 use bytes::BytesMut;
+use codec::response::ColumnType;
 
 use super::*;
 
@@ -29,6 +30,15 @@ impl Row {
 
         Ok((b, Some(Row { raw_cols: v })))
     }
+
+    pub fn col_iter<'a>(&'a self, meta: &'a RowsMetadata) -> RowIterator<'a> {
+        RowIterator {
+            meta: meta,
+            row: self,
+            pos: 0,
+            max: self.raw_cols.len(),
+        }
+    }
 }
 
 impl<T: CqlSerializable> ValueAt<T> for Row {
@@ -47,11 +57,54 @@ impl<U: CqlSerializable> ValueAt<Option<U>> for Row {
     }
 }
 
+pub struct RowIterator<'a> {
+    meta: &'a RowsMetadata,
+    row: &'a Row,
+    pos: usize,
+    max: usize,
+}
+
+macro_rules! row_iter {
+    ($($t : ident), *) => {
+        impl<'a> RowIterator<'a> {
+            fn as_string(&self, i: usize) -> Result<String> {
+                let coltype = self.meta.column_spec[i].coltype();
+                Ok(match *coltype {
+                        $(
+                            ColumnType::$t => format!("{}", ValueAt::<datatypes::$t>::value_at(self.row, i)?),
+                        ) *
+                                      _ => String::from("undefined"),
+                   })
+            }
+        }
+    };
+}
+
+//row_iter!(Varchar, Ascii, Bigint);
+row_iter!(Varchar);
+
+impl<'a> Iterator for RowIterator<'a> {
+    type Item = Result<(&'a ColumnSpec, String)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.pos >= self.max {
+            None
+        } else {
+            let i = self.pos;
+            self.pos += 1;
+            let s = self.as_string(i).map(|v| (&self.meta.column_spec[i], v));
+            Some(s)
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use codec::primitives::datatypes::*;
+    use codec::primitives::{CqlFrom, CqlString};
     use bytes::BytesMut;
+    use super::super::{ColumnSpec, RowsMetadata, ColumnType, TableSpec};
 
     fn as_bytes<T: CqlSerializable>(data: &T) -> Option<BytesMut> {
         let mut bytes = BytesMut::with_capacity(128);
@@ -110,4 +163,45 @@ mod test {
 
         assert_eq!(from, to);
     }
+
+    #[test]
+    fn row_iterator() {
+
+        let row_metadata = RowsMetadata {
+            global_tables_spec: None,
+            paging_state: None,
+            no_metadata: false,
+            column_spec: vec![ColumnSpec::WithoutGlobalSpec {
+                                  table_spec: TableSpec::new("ks", "testtable"),
+                                  name: cql_string!("col1"),
+                                  column_type: ColumnType::Int,
+                              },
+                              ColumnSpec::WithoutGlobalSpec {
+                                  table_spec: TableSpec::new("ks", "testtable"),
+                                  name: cql_string!("col2"),
+                                  column_type: ColumnType::Varchar,
+                              },
+                              ColumnSpec::WithoutGlobalSpec {
+                                  table_spec: TableSpec::new("ks", "testtable"),
+                                  name: cql_string!("col3"),
+                                  column_type: ColumnType::Double,
+                              }],
+            rows_count: 1,
+        };
+
+        let row = Row {
+            raw_cols: vec![as_bytes(&Int::new(123)),
+                           as_bytes(&Varchar::from("hello world")),
+                           as_bytes(&Double::new(1.243))],
+        };
+
+        for result in row.col_iter(&row_metadata) {
+            //            let (spec, string) = result?;
+        }
+
+
+        //        assert_eq!(from, to);
+    }
+
+    //                TODO: Test for Errorcase
 }
