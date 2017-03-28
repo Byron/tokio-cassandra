@@ -85,7 +85,9 @@ impl FromStr for Pk12WithOptionalPassword {
                     .read_to_end(&mut buf)?;
                 Ok(Pk12WithOptionalPassword {
                        content: buf,
-                       password: str::from_utf8(password).expect("str -> bytes -> str to work").into(),
+                       password: str::from_utf8(password)
+                           .expect("str -> bytes -> str to work")
+                           .into(),
                    })
             }
             _ => {
@@ -100,7 +102,8 @@ impl ConnectionOptions {
     pub fn try_from(args: &clap::ArgMatches) -> Result<ConnectionOptions> {
         let host = args.value_of("host").expect("clap to work");
         let port = args.value_of("port").expect("clap to work");
-        let port: u16 = port.parse().chain_err(|| format!("Port '{}' could not be parsed as number", port))?;
+        let port: u16 = port.parse()
+            .chain_err(|| format!("Port '{}' could not be parsed as number", port))?;
         Ok(ConnectionOptions {
                host: host.into(),
                port: port,
@@ -112,7 +115,7 @@ impl ConnectionOptions {
                            .expect("clap to work")
                            .into(),
                        debug: match (args.value_of("debug-dump-encoded-frames-into-directory"),
-                              args.value_of("debug-dump-decoded-frames-into-directory")) {
+                                     args.value_of("debug-dump-decoded-frames-into-directory")) {
                            (None, None) => None,
                            (encode_path, decode_path) => {
                                Some(CqlCodecDebuggingOptions {
@@ -128,13 +131,13 @@ impl ConnectionOptions {
                    net::IpAddr::from_str(host).or_else(|parse_err| {
                 lookup_host(host)
                     .map_err(|err| {
-                        Error::from_kind(format!("Failed to parse '{}' with error: {:?} and could not lookup \
+                                 Error::from_kind(format!("Failed to parse '{}' with error: {:?} and could not lookup \
                                                           host with error {:?}",
-                                                 host,
-                                                 parse_err,
-                                                 err)
-                                                 .into())
-                    })
+                                                          host,
+                                                          parse_err,
+                                                          err)
+                                                          .into())
+                             })
                     .and_then(|mut it| {
                         it.next()
                             .ok_or_else(|| {

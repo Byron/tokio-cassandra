@@ -34,7 +34,9 @@ impl Options {
             buf
         }
                },
-               execute: args.value_of("execute").map(Into::into).unwrap_or_default(),
+               execute: args.value_of("execute")
+                   .map(Into::into)
+                   .unwrap_or_default(),
                keyspace: args.value_of("keyspace").map(Into::into),
            })
     }
@@ -99,21 +101,23 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
     };
 
     let (mut core, client) = opts.connect();
-    core.run(client).chain_err(|| format!("Failed to connect to {}", addr)).and_then(|_client| {
-        // FIXME: provide a consuming version stat consumes a string directly into the vec
-        // and thus prevents an entirely unnecessary copy
-        let _query = CqlLongString::try_from(&query)?;
+    core.run(client)
+        .chain_err(|| format!("Failed to connect to {}", addr))
+        .and_then(|_client| {
+            // FIXME: provide a consuming version stat consumes a string directly into the vec
+            // and thus prevents an entirely unnecessary copy
+            let _query = CqlLongString::try_from(&query)?;
 
-        let s = io::stdout();
-        let mut lio = s.lock();
-        let demo = Demo::default();
-        output_result(&mut lio,
-                      &demo,
-                      args.value_of("output-format")
-                          .expect("clap to work")
-                          .parse()
-                          .expect("clap to work"))?;
-        println!();
-        Ok(())
-    })
+            let s = io::stdout();
+            let mut lio = s.lock();
+            let demo = Demo::default();
+            output_result(&mut lio,
+                          &demo,
+                          args.value_of("output-format")
+                              .expect("clap to work")
+                              .parse()
+                              .expect("clap to work"))?;
+            println!();
+            Ok(())
+        })
 }
