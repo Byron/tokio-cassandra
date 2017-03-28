@@ -74,14 +74,14 @@ macro_rules! row_iter {
                             ColumnType::$t => format!("{}", ValueAt::<datatypes::$t>::value_at(self.row, i)?),
                         ) *
                                       _ => String::from("undefined"),
-                   })
+                })
             }
         }
     };
 }
 
-//row_iter!(Varchar, Ascii, Bigint);
-row_iter!(Varchar);
+// TODO: remove undefined once every case is implemented
+row_iter!(Bigint, Blob, Boolean, List, Varchar, Ascii);
 
 impl<'a> Iterator for RowIterator<'a> {
     type Item = Result<(&'a ColumnSpec, String)>;
@@ -124,7 +124,7 @@ mod test {
         let from = TestStruct {
             a: Int::new(123),
             b: Double::new(1.2345),
-            c: Text::from("foo"),
+            c: Text::try_from("foo").unwrap(),
         };
 
         let row = Row { raw_cols: vec![as_bytes(&from.a), as_bytes(&from.b), as_bytes(&from.c)] };
@@ -150,10 +150,10 @@ mod test {
         let from = TestStruct {
             a: Some(Int::new(123)),
             b: None,
-            c: Text::from("foo"),
+            c: Text::try_from("foo").unwrap(),
         };
 
-        let row = Row { raw_cols: vec![as_bytes(&Int::new(123)), None, as_bytes(&Text::from("foo"))] };
+        let row = Row { raw_cols: vec![as_bytes(&Int::new(123)), None, as_bytes(&Text::try_from("foo").unwrap())] };
 
         let to = TestStruct {
             a: row.value_at(0).unwrap(),
@@ -191,7 +191,7 @@ mod test {
 
         let row = Row {
             raw_cols: vec![as_bytes(&Int::new(123)),
-                           as_bytes(&Varchar::from("hello world")),
+                           as_bytes(&Varchar::try_from("hello world").unwrap()),
                            as_bytes(&Double::new(1.243))],
         };
 

@@ -49,110 +49,9 @@ pub use self::text::*;
 mod udt;
 pub use self::udt::*;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Bigint {
-    inner: i64,
-}
+mod primitive;
+pub use self::primitive::*;
 
-impl CqlSerializable for Bigint {
-    fn serialize(&self, buf: &mut BytesMut) {
-        buf.reserve(8);
-        buf.put_i64::<BigEndian>(self.inner);
-    }
-
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        if data.len() != 8 {
-            return Err(ErrorKind::Incomplete.into());
-        }
-        let long = BigEndian::read_i64(data.as_ref());
-        Ok(Bigint { inner: long })
-    }
-
-    fn bytes_len(&self) -> BytesLen {
-        8
-    }
-}
-
-// Bounds checking needs to be done in constructor
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Blob {
-    inner: BytesMut,
-}
-
-impl CqlSerializable for Blob {
-    fn serialize(&self, buf: &mut BytesMut) {
-        buf.extend(self.inner.as_ref());
-    }
-
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        Ok(Blob { inner: data })
-    }
-
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Boolean {
-    inner: bool,
-}
-
-impl CqlSerializable for Boolean {
-    fn serialize(&self, buf: &mut BytesMut) {
-        if self.inner {
-            buf.put_u8(0x01);
-        } else {
-            buf.put_u8(0x00);
-        }
-    }
-
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        if data.len() != 1 {
-            return Err(ErrorKind::Incomplete.into());
-        }
-
-        let b = data.as_ref()[0];
-        Ok(Boolean { inner: b != 0x00 })
-    }
-
-    fn bytes_len(&self) -> BytesLen {
-        1
-    }
-}
-
-// Bounds checking needs to be done in constructor
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct List<T: CqlSerializable> {
-    inner: Vec<Option<T>>,
-}
-
-impl<T: CqlSerializable> CqlSerializable for List<T> {
-    fn serialize(&self, buf: &mut BytesMut) {
-        ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
-        for item in &self.inner {
-            serialize_bytes(item, buf);
-        }
-    }
-
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        let (data, n) = ::codec::primitives::decode::int(data)?;
-        let mut v = Vec::new();
-
-        let mut d = data;
-        for _ in 0..n {
-            let (data, item) = deserialize_bytes(d)?;
-            v.push(item);
-            d = data
-        }
-
-        Ok(List { inner: v })
-    }
-
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Varint {
@@ -373,17 +272,17 @@ impl<K, V> Debug for Map<K, V>
             let key = K::deserialize(key.clone());
             match key {
                 Ok(k) => k.fmt(fmt)?,
-                Err(err) => fmt.write_str("[ERROR]")?,
+                Err(_) => fmt.write_str("[ERROR]")?,
             }
 
-            fmt.write_str("=>");
+            fmt.write_str("=>")?;
 
             match value.clone() {
                 &Some(ref b) => b.fmt(fmt)?,
                 &None => fmt.write_str("NULL")?,
             }
 
-            fmt.write_char(',');
+            fmt.write_char(',')?;
         }
         Ok(())
     }
@@ -464,9 +363,9 @@ impl<V> Debug for Set<V>
             let v = V::deserialize(item.clone());
             match v {
                 Ok(v) => v.fmt(fmt)?,
-                Err(err) => fmt.write_str("[ERROR]")?,
+                Err(_) => fmt.write_str("[ERROR]")?,
             }
-            fmt.write_char(',');
+            fmt.write_char(',')?;
         }
         Ok(())
     }
@@ -563,40 +462,6 @@ fn deserialize_bytesmut(buf: BytesMut) -> Result<(BytesMut, Option<BytesMut>)> {
     Ok((data, bytes.as_option()))
 }
 
-// Bounds-Checking in Constructor
-#[derive(Debug, PartialEq, Clone)]
-pub struct Text {
-    inner: String,
-}
-
-impl From<&'static str> for Text {
-    //  FIXME: actually bounds check needed with try_from
-    fn from(str: &'static str) -> Self {
-        Text { inner: str.to_string() }
-    }
-}
-
-impl CqlSerializable for Text {
-    fn serialize(&self, buf: &mut BytesMut) {
-        buf.extend(self.inner.as_bytes());
-    }
-
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        Ok(Text { inner: String::from(::std::str::from_utf8(data.as_ref()).unwrap()) })
-    }
-
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
-    }
-}
-
-pub type Varchar = Text;
-
-impl ::std::fmt::Display for Text {
-    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
-        ::std::fmt::Display::fmt(&self.inner, fmt)
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Timestamp {
@@ -717,19 +582,19 @@ mod test_encode_decode {
 
     #[test]
     fn bigint() {
-        let to_encode = Bigint { inner: -123456789 };
+        let to_encode = Bigint::new(-123456789);
         assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn blob() {
-        let to_encode = Blob { inner: vec![0x00, 0x81].into() };
+        let to_encode = Blob::try_from(vec![0x00, 0x81]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn boolean() {
-        let to_encode = Boolean { inner: false };
+        let to_encode = Boolean::new(false);
         assert_serialization_deserialization(to_encode);
     }
 
@@ -774,13 +639,13 @@ mod test_encode_decode {
 
     #[test]
     fn list_boolean() {
-        let to_encode = List { inner: vec![Some(Boolean { inner: false }), Some(Boolean { inner: true }), None] };
+        let to_encode = List::try_from(vec![Some(Boolean::new(false)), Some(Boolean::new(true)), None]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn list_double() {
-        let to_encode = List { inner: vec![Some(Double { inner: 1.23 }), Some(Double { inner: 2.34 })] };
+        let to_encode = List::try_from(vec![Some(Double { inner: 1.23 }), Some(Double { inner: 2.34 })]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
@@ -788,8 +653,8 @@ mod test_encode_decode {
     fn map() {
         let to_encode = {
             let mut m = Map::new();
-            m.insert(Int { inner: 1 }, Some(Boolean { inner: true }));
-            m.insert(Int { inner: 2 }, Some(Boolean { inner: true }));
+            m.insert(Int { inner: 1 }, Some(Boolean::new(true)));
+            m.insert(Int { inner: 2 }, Some(Boolean::new(true)));
             m.insert(Int { inner: 3 }, None);
             m
         };
@@ -810,7 +675,7 @@ mod test_encode_decode {
 
     #[test]
     fn text() {
-        let to_encode = Text { inner: String::from("text") };
+        let to_encode = Text::try_from("text").unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
@@ -828,7 +693,7 @@ mod test_encode_decode {
 
     #[test]
     fn varchar() {
-        let to_encode = Varchar { inner: String::from("text") };
+        let to_encode = Varchar::try_from("text").unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
