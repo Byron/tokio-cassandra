@@ -191,9 +191,13 @@ impl Header {
         Ok(Header {
                version: version,
                flags: b[1],
-               stream_id: (&b[2..4]).read_u16::<BigEndian>().expect("to have 2 bytes exactly"),
+               stream_id: (&b[2..4])
+                   .read_u16::<BigEndian>()
+                   .expect("to have 2 bytes exactly"),
                op_code: OpCode::try_from(b[4])?,
-               length: (&b[5..9]).read_u32::<BigEndian>().expect("to have 4 bytes exactly"),
+               length: (&b[5..9])
+                   .read_u32::<BigEndian>()
+                   .expect("to have 4 bytes exactly"),
            })
     }
 

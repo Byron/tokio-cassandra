@@ -115,13 +115,21 @@ impl Client {
                    handle: &Handle,
                    options: ConnectOptions)
                    -> Box<Future<Item = ClientHandle, Error = Error>> {
-        let ConnectOptions { creds, tls, desired_cql_version } = options;
+        let ConnectOptions {
+            creds,
+            tls,
+            desired_cql_version,
+        } = options;
         let ret = match tls {
                 Some(tls) => ssl_client(self.protocol, addr, handle, tls),
                 None => Box::new(TcpClient::new(self.protocol).connect(addr, handle)),
             }
             .map(|client_proxy| ClientHandle { inner: Box::new(client_proxy) })
-            .and_then(|client_handle| client_handle.call(request::Message::Options).map(|r| (r, client_handle)))
+            .and_then(|client_handle| {
+                          client_handle
+                              .call(request::Message::Options)
+                              .map(|r| (r, client_handle))
+                      })
             .map_err(|e| e.into())
             .and_then(|(res, ch)| interpret_response_and_handle(ch, res, creds, desired_cql_version))
             .and_then(|ch| Ok(ch));

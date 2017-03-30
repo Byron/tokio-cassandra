@@ -11,28 +11,31 @@ pub struct SupportedMessage(pub CqlStringMultiMap);
 
 impl SupportedMessage {
     pub fn cql_versions(&self) -> Option<&CqlStringList> {
-        self.0.get(unsafe { &CqlString::unchecked_from("CQL_VERSION") })
+        self.0
+            .get(unsafe { &CqlString::unchecked_from("CQL_VERSION") })
     }
 
     pub fn compression(&self) -> Option<&CqlStringList> {
-        self.0.get(unsafe { &CqlString::unchecked_from("COMPRESSION") })
+        self.0
+            .get(unsafe { &CqlString::unchecked_from("COMPRESSION") })
     }
 
     pub fn latest_cql_version(&self) -> Option<&CqlString> {
-        self.cql_versions().and_then(|lst| {
-                                         lst.iter()
-                                             .filter_map(|v| Version::parse(v.as_ref()).ok().map(|vp| (vp, v)))
-                                             .max_by_key(|t| t.0.clone())
-                                             .map(|(_vp, v)| v)
-                                     })
+        self.cql_versions()
+            .and_then(|lst| {
+                          lst.iter()
+                              .filter_map(|v| Version::parse(v.as_ref()).ok().map(|vp| (vp, v)))
+                              .max_by_key(|t| t.0.clone())
+                              .map(|(_vp, v)| v)
+                      })
     }
 }
 
 impl CqlDecode<SupportedMessage> for SupportedMessage {
     fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<SupportedMessage> {
-        decode::string_multimap(buf).map(|d| d.1.into()).map_err(|err| {
-                                                                     ErrorKind::ParserError(format!("{}", err)).into()
-                                                                 })
+        decode::string_multimap(buf)
+            .map(|d| d.1.into())
+            .map_err(|err| ErrorKind::ParserError(format!("{}", err)).into())
     }
 }
 
@@ -62,11 +65,9 @@ pub struct AuthSuccessMessage {
 
 impl CqlDecode<AuthSuccessMessage> for AuthSuccessMessage {
     fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<AuthSuccessMessage> {
-        decode::bytes(buf).map(|d| AuthSuccessMessage { payload: d.1 }).map_err(|err| {
-                                                                                    ErrorKind::ParserError(format!("{}",
-                                                                                                                   err))
-                                                                                            .into()
-                                                                                })
+        decode::bytes(buf)
+            .map(|d| AuthSuccessMessage { payload: d.1 })
+            .map_err(|err| ErrorKind::ParserError(format!("{}", err)).into())
     }
 }
 

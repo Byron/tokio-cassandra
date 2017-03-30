@@ -125,8 +125,12 @@ impl CqlEncode for QueryMessage {
 
         self.values.as_ref().map(|v| v.encode(version, buf));
         self.page_size.map(|v| encode::int(v, buf));
-        self.paging_state.as_ref().map(|v| encode::bytes(v, buf));
-        self.serial_consistency.as_ref().map(|v| encode::consistency(&v, buf));
+        self.paging_state
+            .as_ref()
+            .map(|v| encode::bytes(v, buf));
+        self.serial_consistency
+            .as_ref()
+            .map(|v| encode::consistency(&v, buf));
         self.timestamp.map(|v| encode::long(v, buf));
 
         Ok(buf.len() - l)

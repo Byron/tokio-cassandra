@@ -44,7 +44,9 @@ impl Row {
 impl<T: CqlSerializable> ValueAt<T> for Row {
     fn value_at(&self, i: usize) -> Result<T> {
         // TODO: no clone, maybe?
-        Ok(T::deserialize(self.raw_cols[i].clone().expect("Caller expected non-optional value"))?)
+        Ok(T::deserialize(self.raw_cols[i]
+                              .clone()
+                              .expect("Caller expected non-optional value"))?)
     }
 }
 
@@ -65,13 +67,13 @@ pub struct RowIterator<'a> {
 }
 
 macro_rules! row_iter {
-    ($($t : ident), *) => {
+    ($($s : pat => $t : ident ), *) => {
         impl<'a> RowIterator<'a> {
             fn as_string(&self, i: usize) -> Result<String> {
                 let coltype = self.meta.column_spec[i].coltype();
                 Ok(match *coltype {
                         $(
-                            ColumnType::$t => format!("{}", ValueAt::<datatypes::$t>::value_at(self.row, i)?),
+                            $s => format!("{}", ValueAt::<datatypes::$t>::value_at(self.row, i)?),
                         ) *
                                       _ => String::from("undefined"),
                 })
@@ -81,7 +83,17 @@ macro_rules! row_iter {
 }
 
 // TODO: remove undefined once every case is implemented
-row_iter!(Bigint, Blob, Boolean, List, Varchar, Ascii);
+row_iter!(
+    ColumnType::Bigint => Bigint,
+    ColumnType::Blob => Blob,
+    ColumnType::Boolean => Boolean,
+//    ColumnType::List(_) => List,
+    ColumnType::Double => Double,
+    ColumnType::Float => Float,
+    ColumnType::Int => Int,
+    ColumnType::Varchar => Varchar,
+    ColumnType::Ascii => Ascii
+);
 
 impl<'a> Iterator for RowIterator<'a> {
     type Item = Result<(&'a ColumnSpec, String)>;

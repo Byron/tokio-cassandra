@@ -22,7 +22,10 @@ impl Authenticator {
         match name {
             "org.apache.cassandra.auth.PasswordAuthenticator" => {
                 match credentials {
-                    Login { username: user, password: pwd } => {
+                    Login {
+                        username: user,
+                        password: pwd,
+                    } => {
                         Ok(Authenticator::PlainTextAuthenticator {
                                username: user,
                                password: pwd,
@@ -36,7 +39,10 @@ impl Authenticator {
 
     pub fn encode_auth_response<'a>(&self, v: &mut BytesMut) -> () {
         match self {
-            &Authenticator::PlainTextAuthenticator { username: ref user, password: ref pwd } => {
+            &Authenticator::PlainTextAuthenticator {
+                 username: ref user,
+                 password: ref pwd,
+             } => {
                 v.put_u8(0x00);
                 v.extend(user.as_bytes());
                 v.put_u8(0x00);

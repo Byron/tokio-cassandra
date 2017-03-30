@@ -50,7 +50,7 @@ impl<T: CqlSerializable + Display> Display for List<T> {
 
         let l = self.inner.len();
         let mut i = 1;
-        fmt.write_char('{');
+        fmt.write_char('{')?;
         for value in &self.inner {
             match value.clone() {
                 &Some(ref b) => b.fmt(fmt)?,
@@ -62,7 +62,7 @@ impl<T: CqlSerializable + Display> Display for List<T> {
             }
             i = i + 1;
         }
-        fmt.write_char('}');
+        fmt.write_char('}')?;
         Ok(())
     }
 }

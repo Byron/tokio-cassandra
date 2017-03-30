@@ -21,13 +21,23 @@ pub fn interpret_response_and_handle(handle: ClientHandle,
     match res {
         response::Message::Supported(msg) => {
             let startup = startup_message_from_supported(msg, desired_cql_version.as_ref());
-            let f = future::done(startup).and_then(|s| handle.call(s).map_err(|e| e.into()).map(|r| (r, handle)));
+            let f = future::done(startup).and_then(|s| {
+                                                       handle
+                                                           .call(s)
+                                                           .map_err(|e| e.into())
+                                                           .map(|r| (r, handle))
+                                                   });
             Box::new(f.and_then(move |(res, ch)| interpret_response_and_handle(ch, res, creds, desired_cql_version))
                          .and_then(|ch| Ok(ch)))
         }
         response::Message::Authenticate(msg) => {
             let auth_response = auth_response_from_authenticate(creds.clone(), msg);
-            let f = future::done(auth_response).and_then(|s| handle.call(s).map_err(|e| e.into()).map(|r| (r, handle)));
+            let f = future::done(auth_response).and_then(|s| {
+                                                             handle
+                                                                 .call(s)
+                                                                 .map_err(|e| e.into())
+                                                                 .map(|r| (r, handle))
+                                                         });
             Box::new(f.and_then(move |(res, ch)| interpret_response_and_handle(ch, res, creds, desired_cql_version))
                          .and_then(|ch| Ok(ch)))
         }
@@ -71,7 +81,7 @@ fn auth_response_from_authenticate(creds: Option<Credentials>,
     let creds = creds.ok_or(ErrorKind::HandshakeError(format!("No credentials provided but\
                                                         server requires authentication \
                                                       by {}",
-                                                              msg.authenticator.as_ref())))?;
+                                                 msg.authenticator.as_ref())))?;
 
     let authenticator = Authenticator::from_name(msg.authenticator.as_ref(), creds).chain_err(|| "Authenticator Err")?;
 

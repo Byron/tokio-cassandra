@@ -34,7 +34,9 @@ impl<Kind, P> Future for Connect<Kind, P>
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<P::BindClient, io::Error> {
-        let socket = try_ready!(self.socket.poll().map_err(|e| io::Error::new(io::ErrorKind::Other, e)));
+        let socket = try_ready!(self.socket
+                                    .poll()
+                                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e)));
         Ok(Async::Ready(self.proto.bind_client(&self.handle, socket)))
     }
 }
@@ -80,11 +82,15 @@ impl<Kind, P> SslClient<Kind, P>
 fn setup_connector(mut connector: SslConnectorBuilder,
                    tls: EasyConfiguration)
                    -> Result<SslConnectorBuilder, io::Error> {
-    if let Some(Credentials::Pk12 { contents, passphrase }) = tls.credentials {
+    if let Some(Credentials::Pk12 {
+                    contents,
+                    passphrase,
+                }) = tls.credentials {
         Pkcs12::from_der(&contents).and_then(|p| p.parse(&passphrase))
             .and_then(|identity| {
                 let builder = connector.builder_mut();
-                builder.set_private_key(&identity.pkey)
+                builder
+                    .set_private_key(&identity.pkey)
                     .and_then(|_| builder.set_certificate(&identity.cert))
                     .and_then(|_| builder.check_private_key())
                     .and_then(move |_| {

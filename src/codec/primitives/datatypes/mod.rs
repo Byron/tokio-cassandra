@@ -53,42 +53,6 @@ mod primitive;
 pub use self::primitive::*;
 
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Varint {
-    inner: BytesMut,
-}
-
-impl CqlSerializable for Varint {
-    fn serialize(&self, buf: &mut BytesMut) {
-        buf.extend(self.inner.as_ref());
-    }
-
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        Ok(Varint { inner: data })
-    }
-
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
-    }
-}
-
-impl ToString for Varint {
-    fn to_string(&self) -> String {
-        use num_bigint::{Sign, BigInt};
-        let bytes = self.inner.as_ref();
-
-        let bint = {
-            if bytes[0] & 0x80 == 0x80 {
-                let v: Vec<u8> = Vec::from(bytes).into_iter().map(|x| !x).collect();
-                BigInt::from_bytes_be(Sign::Minus, &v[..]) - BigInt::from(1)
-            } else {
-                BigInt::from_bytes_be(Sign::Plus, bytes)
-            }
-        };
-
-        format!("{}", bint)
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Decimal {
@@ -98,7 +62,6 @@ pub struct Decimal {
 
 // TODO: impl From<f64> ...
 // TODO: impl other useful initializers, also for other types
-
 //impl From<(dDecimal {
 //    fn new(unscaled: i64, scale: i32) {
 //       Decimal {
@@ -127,89 +90,7 @@ impl CqlSerializable for Decimal {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct Double {
-    inner: f64,
-}
 
-impl Double {
-    pub fn new(f: f64) -> Self {
-        Double { inner: f }
-    }
-}
-
-impl CqlSerializable for Double {
-    fn serialize(&self, buf: &mut BytesMut) {
-        buf.reserve(8);
-        buf.put_f64::<BigEndian>(self.inner);
-    }
-
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        if data.len() < 8 {
-            return Err(ErrorKind::Incomplete.into());
-        }
-        let v = BigEndian::read_f64(data.as_ref());
-        Ok(Double { inner: v })
-    }
-
-    fn bytes_len(&self) -> BytesLen {
-        8
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-struct Float {
-    inner: f32,
-}
-
-impl CqlSerializable for Float {
-    fn serialize(&self, buf: &mut BytesMut) {
-        buf.reserve(4);
-        buf.put_f32::<BigEndian>(self.inner);
-    }
-
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        if data.len() < 4 {
-            return Err(ErrorKind::Incomplete.into());
-        }
-        let v = BigEndian::read_f32(data.as_ref());
-        Ok(Float { inner: v })
-    }
-
-    fn bytes_len(&self) -> BytesLen {
-        4
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Int {
-    inner: i32,
-}
-
-impl Int {
-    pub fn new(i: i32) -> Self {
-        Int { inner: i }
-    }
-}
-
-impl CqlSerializable for Int {
-    fn serialize(&self, buf: &mut BytesMut) {
-        buf.reserve(4);
-        buf.put_i32::<BigEndian>(self.inner);
-    }
-
-    fn deserialize(data: BytesMut) -> Result<Self> {
-        if data.len() < 4 {
-            return Err(ErrorKind::Incomplete.into());
-        }
-        let v = BigEndian::read_i32(data.as_ref());
-        Ok(Int { inner: v })
-    }
-
-    fn bytes_len(&self) -> BytesLen {
-        4
-    }
-}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Inet {
@@ -602,20 +483,20 @@ mod test_encode_decode {
     fn decimal() {
         let to_encode = Decimal {
             scale: 1,
-            unscaled: Varint { inner: vec![0x00, 0x80].into() },
+            unscaled: Varint::try_from(vec![0x00, 0x80]).unwrap(),
         };
         assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn double() {
-        let to_encode = Double { inner: 1.23 };
+        let to_encode = Double::new(1.23);
         assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn float() {
-        let to_encode = Float { inner: 1.23 };
+        let to_encode = Float::new(1.23);
         assert_serialization_deserialization(to_encode);
     }
 
@@ -645,7 +526,7 @@ mod test_encode_decode {
 
     #[test]
     fn list_double() {
-        let to_encode = List::try_from(vec![Some(Double { inner: 1.23 }), Some(Double { inner: 2.34 })]).unwrap();
+        let to_encode = List::try_from(vec![Some(Double::new(1.23)), Some(Double::new(2.34))]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
@@ -653,9 +534,9 @@ mod test_encode_decode {
     fn map() {
         let to_encode = {
             let mut m = Map::new();
-            m.insert(Int { inner: 1 }, Some(Boolean::new(true)));
-            m.insert(Int { inner: 2 }, Some(Boolean::new(true)));
-            m.insert(Int { inner: 3 }, None);
+            m.insert(Int::new(1), Some(Boolean::new(true)));
+            m.insert(Int::new(2), Some(Boolean::new(true)));
+            m.insert(Int::new(3), None);
             m
         };
         assert_serialization_deserialization(to_encode);
@@ -665,9 +546,9 @@ mod test_encode_decode {
     fn set() {
         let to_encode = {
             let mut s = Set::new();
-            s.insert(Int { inner: 1 });
-            s.insert(Int { inner: 2 });
-            s.insert(Int { inner: 3 });
+            s.insert(Int::new(1));
+            s.insert(Int::new(2));
+            s.insert(Int::new(3));
             s
         };
         assert_serialization_deserialization(to_encode);
@@ -699,22 +580,22 @@ mod test_encode_decode {
 
     #[test]
     fn varint() {
-        let to_encode = Varint { inner: vec![0x00, 0x80].into() };
+        let to_encode = Varint::try_from(vec![0x00, 0x80]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn varint_to_string() {
-        assert_eq!(&Varint { inner: vec![0x00].into() }.to_string(), "0");
-        assert_eq!(&Varint { inner: vec![0x01].into() }.to_string(), "1");
-        assert_eq!(&Varint { inner: vec![0x7F].into() }.to_string(), "127");
-        assert_eq!(&Varint { inner: vec![0x00, 0x80].into() }.to_string(),
+        assert_eq!(&Varint::try_from(vec![0x00]).unwrap().to_string(), "0");
+        assert_eq!(&Varint::try_from(vec![0x01]).unwrap().to_string(), "1");
+        assert_eq!(&Varint::try_from(vec![0x7F]).unwrap().to_string(), "127");
+        assert_eq!(&Varint::try_from(vec![0x00, 0x80]).unwrap().to_string(),
                    "128");
-        assert_eq!(&Varint { inner: vec![0x00, 0x81].into() }.to_string(),
+        assert_eq!(&Varint::try_from(vec![0x00, 0x81]).unwrap().to_string(),
                    "129");
-        assert_eq!(&Varint { inner: vec![0xFF].into() }.to_string(), "-1");
-        assert_eq!(&Varint { inner: vec![0x80].into() }.to_string(), "-128");
-        assert_eq!(&Varint { inner: vec![0xFF, 0x7F].into() }.to_string(),
+        assert_eq!(&Varint::try_from(vec![0xFF]).unwrap().to_string(), "-1");
+        assert_eq!(&Varint::try_from(vec![0x80]).unwrap().to_string(), "-128");
+        assert_eq!(&Varint::try_from(vec![0xFF, 0x7F]).unwrap().to_string(),
                    "-129");
     }
 
