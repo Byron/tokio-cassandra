@@ -1,8 +1,10 @@
 use super::super::errors::*;
-use std::io::{self, Write};
+use std::io::{self, Write, Cursor, BufRead};
 use tokio_cassandra::codec::header::Header;
 #[cfg(feature = "colors")]
 use syntect::easy::HighlightLines;
+#[cfg(feature = "colors")]
+use syntect::util::as_24_bit_terminal_escaped;
 #[cfg(feature = "colors")]
 use syntect::parsing::SyntaxSet;
 #[cfg(feature = "colors")]
@@ -37,7 +39,8 @@ arg_enum! {
 }
 
 struct Highlighter<'a, W> {
-    _hl: HighlightLines<'a>,
+    hl: HighlightLines<'a>,
+    cursor: Cursor<Vec<u8>>,
     writer: W,
 }
 
@@ -45,10 +48,20 @@ impl<'a, W> Write for Highlighter<'a, W>
     where W: Write
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.writer.write(buf)
+        self.cursor.write(buf)
     }
     fn flush(&mut self) -> io::Result<()> {
-        self.writer.flush()
+        //        self.cursor.seek(SeekFrom::Start(0)).map(|e| ())?;
+        let mut line = String::new();
+        while let Ok(_) = self.cursor.read_line(&mut line) {
+            let escaped = {
+                let ranges = self.hl.highlight(&line);
+                as_24_bit_terminal_escaped(&ranges[..], true)
+            };
+            self.writer.write(escaped.as_bytes())?;
+            line.clear();
+        }
+        Ok(())
     }
 }
 
@@ -64,19 +77,21 @@ pub fn output_result<W: Write>(out: &mut W, res: &Demo, fmt: OutputFormat) -> Re
     match fmt {
         OutputFormat::json => {
             let mut hl = Highlighter {
-                _hl: HighlightLines::new(ss.find_syntax_by_extension("yaml")
-                                             .expect("yaml syntax to be compiled in"),
-                                         theme),
+                hl: HighlightLines::new(ss.find_syntax_by_extension("yaml")
+                                            .expect("yaml syntax to be compiled in"),
+                                        theme),
                 writer: out,
+                cursor: Cursor::new(Vec::new()),
             };
             ::serde_json::ser::to_writer_pretty(&mut hl, res)?
         }
         OutputFormat::yaml => {
             let mut hl = Highlighter {
-                _hl: HighlightLines::new(ss.find_syntax_by_extension("json")
-                                             .expect("json syntax to be compiled in"),
-                                         theme),
+                hl: HighlightLines::new(ss.find_syntax_by_extension("json")
+                                            .expect("json syntax to be compiled in"),
+                                        theme),
                 writer: out,
+                cursor: Cursor::new(Vec::new()),
             };
             ::serde_yaml::to_writer(&mut hl, res)?
         }
