@@ -193,6 +193,65 @@ impl CqlSerializable for Int {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Decimal {
+    scale: i32,
+    unscaled: Varint,
+}
+
+impl Decimal {
+    pub fn new(scale: i32, unscaled: Varint) -> Self {
+        Decimal {
+            scale: scale,
+            unscaled: unscaled,
+        }
+    }
+}
+
+impl CqlSerializable for Decimal {
+    fn serialize(&self, buf: &mut BytesMut) {
+        ::codec::primitives::encode::int(self.scale, buf);
+        self.unscaled.serialize(buf);
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        let (data, scale) = ::codec::primitives::decode::int(data)?;
+        let unscaled = Varint::deserialize(data)?;
+        Ok(Decimal {
+               scale: scale,
+               unscaled: unscaled,
+           })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        4 + self.unscaled.bytes_len()
+    }
+}
+
+impl Display for Decimal {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        let unscaled = format!("{}", self.unscaled);
+        let n = self.scale + 1;
+        let n = n - unscaled.len() as i32;
+        if n > 0 {
+            fmt.write_str("0.")?;
+            for _ in 0..n {
+                fmt.write_char('0')?;
+            }
+
+            fmt.write_str(&unscaled)?;
+        } else {
+            for (i, c) in unscaled.chars().enumerate() {
+                if self.scale != 0 && i == self.scale as usize {
+                    fmt.write_char('.')?;
+                }
+                fmt.write_char(c)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -201,5 +260,41 @@ mod test {
     fn bigint_display() {
         let x = Bigint::new(-123);
         assert_eq!("-123", format!("{}", x));
+    }
+
+    #[test]
+    fn varint_display() {
+        let x = Varint::try_from(vec![0x00, 0x02]).unwrap();
+        assert_eq!("2", format!("{}", x));
+    }
+
+    #[test]
+    fn float_display() {
+        let x = Float::new(-1.23);
+        assert_eq!("-1.23", format!("{}", x));
+    }
+
+    #[test]
+    fn double_display() {
+        let x = Double::new(-1.23);
+        assert_eq!("-1.23", format!("{}", x));
+    }
+
+    #[test]
+    fn int_display() {
+        let x = Int::new(-123);
+        assert_eq!("-123", format!("{}", x));
+    }
+
+    #[test]
+    fn decimal_display() {
+        let x = Decimal::new(2, Varint::try_from(vec![0x09]).unwrap());
+        assert_eq!("0.009", format!("{}", x));
+
+        let x = Decimal::new(0, Varint::try_from(vec![0x09]).unwrap());
+        assert_eq!("9", format!("{}", x));
+
+        let x = Decimal::new(2, Varint::try_from(vec![0x05, 0x09]).unwrap());
+        assert_eq!("12.89", format!("{}", x));
     }
 }

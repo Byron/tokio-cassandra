@@ -67,6 +67,223 @@ impl<T: CqlSerializable + Display> Display for List<T> {
     }
 }
 
+// Bounds checking needs to be done in constructor
+#[derive(PartialEq, Eq)]
+pub struct Map<K, V>
+    where K: CqlSerializable,
+          V: CqlSerializable
+{
+    //    FIXME: is this a good idea to use BytesMut here?
+    inner: HashMap<BytesMut, Option<V>>,
+    p: PhantomData<K>,
+}
+
+impl<K, V> Debug for Map<K, V>
+    where V: CqlSerializable + Debug,
+          K: CqlSerializable + Debug
+{
+    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        for (key, value) in &self.inner {
+            let key = K::deserialize(key.clone());
+            match key {
+                Ok(k) => k.fmt(fmt)?,
+                Err(_) => fmt.write_str("[ERROR]")?,
+            }
+
+            fmt.write_str("=>")?;
+
+            match value.clone() {
+                &Some(ref b) => b.fmt(fmt)?,
+                &None => fmt.write_str("NULL")?,
+            }
+
+            fmt.write_char(',')?;
+        }
+        Ok(())
+    }
+}
+
+impl<K, V> Map<K, V>
+    where K: CqlSerializable,
+          V: CqlSerializable
+{
+    pub fn new() -> Self {
+        Map {
+            inner: HashMap::new(),
+            p: PhantomData,
+        }
+    }
+
+    pub fn insert(&mut self, key: K, value: Option<V>) {
+        //        FIXME: find a good length
+        let mut bytes = BytesMut::with_capacity(128);
+        key.serialize(&mut bytes);
+        self.inner.insert(bytes, value);
+    }
+}
+
+
+impl<K, V> CqlSerializable for Map<K, V>
+    where K: CqlSerializable,
+          V: CqlSerializable
+{
+    fn serialize(&self, buf: &mut BytesMut) {
+        ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
+
+        for (k, v) in &self.inner {
+            // FIXME: bound checks
+            ::codec::primitives::encode::int(k.len() as i32, buf);
+            buf.extend(k);
+            serialize_bytes(v, buf);
+        }
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        let (data, n) = ::codec::primitives::decode::int(data)?;
+        let mut m = Map::new();
+        let mut d = data;
+        for _ in 0..n {
+            let (data, k) = deserialize_bytes::<K>(d)?;
+            let k = match k {
+                Some(k) => k,
+                None => panic!(),
+            };
+
+            let (data, v) = deserialize_bytes::<V>(data)?;
+            m.insert(k, v);
+            d = data
+        }
+        Ok(m)
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        self.inner.len() as BytesLen
+    }
+}
+
+// Bounds checking needs to be done in constructor
+#[derive(PartialEq, Eq)]
+pub struct Set<V>
+    where V: CqlSerializable
+{
+    inner: HashSet<BytesMut>,
+    p: PhantomData<V>,
+}
+
+impl<V> Debug for Set<V>
+    where V: CqlSerializable + Debug
+{
+    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        for item in &self.inner {
+            let v = V::deserialize(item.clone());
+            match v {
+                Ok(v) => v.fmt(fmt)?,
+                Err(_) => fmt.write_str("[ERROR]")?,
+            }
+            fmt.write_char(',')?;
+        }
+        Ok(())
+    }
+}
+
+
+impl<V> Set<V>
+    where V: CqlSerializable
+{
+    pub fn new() -> Self {
+        Set {
+            inner: HashSet::new(),
+            p: PhantomData,
+        }
+    }
+
+    pub fn insert(&mut self, value: V) {
+        //        FIXME: find a good length
+        let mut bytes = BytesMut::with_capacity(128);
+        value.serialize(&mut bytes);
+        self.inner.insert(bytes);
+    }
+}
+
+impl<V> CqlSerializable for Set<V>
+    where V: CqlSerializable
+{
+    fn serialize(&self, buf: &mut BytesMut) {
+        // FIXME: bound checks
+        ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
+
+        for v in &self.inner {
+            // FIXME: bound checks
+            ::codec::primitives::encode::int(v.len() as i32, buf);
+            buf.extend(v);
+        }
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        let (data, n) = ::codec::primitives::decode::int(data)?;
+        let mut s = Set::new();
+        let mut d = data;
+        for _ in 0..n {
+            let (data, v) = deserialize_bytes::<V>(d)?;
+            if let Some(v) = v {
+                s.insert(v);
+            }
+            d = data
+        }
+        Ok(s)
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        self.inner.len() as BytesLen
+    }
+}
+
+// Bounds checking needs to be done in constructor
+#[derive(Debug, PartialEq, Eq)]
+pub struct BytesMutCollection {
+    inner: Vec<Option<BytesMut>>,
+}
+
+impl CqlSerializable for BytesMutCollection {
+    fn serialize(&self, buf: &mut BytesMut) {
+        ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
+        for item in &self.inner {
+            serialize_bytesmut(item, buf);
+        }
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        let (data, n) = ::codec::primitives::decode::int(data)?;
+        let mut v = Vec::new();
+
+        let mut d = data;
+        for _ in 0..n {
+            let (data, item) = deserialize_bytesmut(d)?;
+            v.push(item);
+            d = data
+        }
+
+        Ok(BytesMutCollection { inner: v })
+    }
+
+    fn bytes_len(&self) -> BytesLen {
+        self.inner.len() as BytesLen
+    }
+}
+
+impl TryFrom<Vec<Option<BytesMut>>> for BytesMutCollection {
+    fn try_from(data: Vec<Option<BytesMut>>) -> Result<Self> {
+        if data.len() > BytesLen::max_value() as usize {
+            Err(ErrorKind::MaximumLengthExceeded.into())
+        } else {
+            Ok(BytesMutCollection { inner: data })
+        }
+    }
+}
+
+pub type Tuple = BytesMutCollection;
+pub type Udt = BytesMutCollection;
+
 #[cfg(test)]
 mod test {
 
