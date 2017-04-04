@@ -18,6 +18,7 @@ extern crate tokio_service;
 extern crate tokio_proto;
 extern crate tokio_io;
 extern crate bytes;
+extern crate chrono;
 
 #[cfg(feature = "with-openssl")]
 extern crate tokio_openssl;

@@ -75,7 +75,22 @@ macro_rules! row_iter {
                         $(
                             $s => format!("{}", ValueAt::<datatypes::$t>::value_at(self.row, i)?),
                         ) *
+
+                        /*
+
+
+                        ColumnType::List(x) =>
+                        match x {
+                            simple type => format!("{}", ValueAt::<List<simple type>>::value_at(self.row, i)?),
+                            list => recursion!!! match again ...
+                        }
+
+
+                        */
+//                        format!("{}", ValueAt::<datatypes::List<>>)
+
                                       _ => String::from("undefined"),
+
                 })
             }
         }
@@ -92,9 +107,10 @@ row_iter!(
 //    ColumnType::Tuple(_) => Tuple,
 //    ColumnType::Set(_) => Set,
 //    ColumnType::Udt(_) => Udt,
-//    ColumnType::Timestamp(_) => Timestamp,
-//    ColumnType::Uuid(_) => Uuid,
-//    ColumnType::TimeUuid(_) => TimeUuid,
+
+    ColumnType::Timestamp => Timestamp,
+    ColumnType::Uuid => Uuid,
+    ColumnType::Timeuuid => TimeUuid,
     ColumnType::Double => Double,
     ColumnType::Float => Float,
     ColumnType::Int => Int,
@@ -188,7 +204,6 @@ mod test {
 
     #[test]
     fn row_iterator() {
-
         let row_metadata = RowsMetadata {
             global_tables_spec: None,
             paging_state: None,

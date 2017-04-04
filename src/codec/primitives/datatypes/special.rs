@@ -81,6 +81,13 @@ impl CqlSerializable for Timestamp {
     }
 }
 
+impl Display for Timestamp {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        let naive = ::chrono::naive::datetime::NaiveDateTime::from_timestamp(self.epoch, 0);
+        ::std::fmt::Display::fmt(&naive, fmt)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Uuid {
     inner: [u8; 16],
@@ -112,6 +119,30 @@ impl CqlSerializable for Uuid {
     }
 }
 
+impl Display for Uuid {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        let s = format!("{:02X}{:02X}{:02X}{:02X}-{:02X}{:02X}-{:02X}{:02X}\
+                        -{:02X}{:02X}-{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}",
+                        self.inner[0],
+                        self.inner[1],
+                        self.inner[2],
+                        self.inner[3],
+                        self.inner[4],
+                        self.inner[5],
+                        self.inner[6],
+                        self.inner[7],
+                        self.inner[8],
+                        self.inner[9],
+                        self.inner[10],
+                        self.inner[11],
+                        self.inner[12],
+                        self.inner[13],
+                        self.inner[14],
+                        self.inner[15]);
+        ::std::fmt::Display::fmt(&s, fmt)
+    }
+}
+
 pub type TimeUuid = Uuid;
 
 #[cfg(test)]
@@ -130,6 +161,21 @@ mod test {
         assert_eq!("::ffff:192.10.2.255", format!("{}", iv6));
     }
 
-    //    TODO: test for timestamp display
-    //    TODO: display for UUID / Timeuuid
+    #[test]
+    fn timestamp_display() {
+        let timestamp = Timestamp::new(1491283495);
+        assert_eq!("2017-04-04 05:24:55", format!("{}", timestamp));
+    }
+
+    #[test]
+    fn uuid_display() {
+        let uuid = Uuid::new([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        assert_eq!("00010203-0405-0607-0809-0A0B0C0D0E0F", format!("{}", uuid));
+    }
+
+    #[test]
+    fn timeuuid_display() {
+        let uuid = TimeUuid::new([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        assert_eq!("00010203-0405-0607-0809-0A0B0C0D0E0F", format!("{}", uuid));
+    }
 }
