@@ -2,6 +2,7 @@ use codec::primitives::datatypes::{self, CqlSerializable};
 use codec::primitives::decode;
 use bytes::BytesMut;
 use codec::response::ColumnType;
+use std::ops::Deref;
 
 use super::*;
 
@@ -75,39 +76,207 @@ macro_rules! row_iter {
                         $(
                             $s => format!("{}", ValueAt::<datatypes::$t>::value_at(self.row, i)?),
                         ) *
-
-                        /*
-
-
-                        ColumnType::List(x) =>
-                        match x {
-                            simple type => format!("{}", ValueAt::<List<simple type>>::value_at(self.row, i)?),
-                            list => recursion!!! match again ...
+                        ColumnType::List(ref x) => {
+                            match x.deref() {
+                                $(
+                                    &$s => format!("{}", ValueAt::<datatypes::List<datatypes::$t>>
+                                        ::value_at(self.row, i)?),
+                                ) *
+                                _ => unimplemented!(), // FIXME: error handling or raw list then
+                            }
                         }
-
-
-                        */
-//                        format!("{}", ValueAt::<datatypes::List<>>)
-
-                                      _ => String::from("undefined"),
-
+                        ColumnType::Set(ref x) => {
+                            match x.deref() {
+                                $(
+                                    &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                        ::value_at(self.row, i)?),
+                                ) *
+                                _ => unimplemented!(), // FIXME: error handling or raw list then
+                            }
+                        }
+                        ColumnType::Map(ref k, ref v) => {
+                            match k.deref() {
+                                &ColumnType::Bigint => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Blob => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Boolean => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Tuple(_) => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Udt(_) => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Timestamp => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Uuid => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Timeuuid => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Double => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Float =>{
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Int => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Decimal => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Varint => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Inet => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Varchar => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                &ColumnType::Ascii => {
+                                    match v.deref() {
+                                        $(
+                                            &$s => format!("{}", ValueAt::<datatypes::Set<datatypes::$t>>
+                                                ::value_at(self.row, i)?),
+                                        ) *
+                                        _ => unimplemented!(), // FIXME: error handling or raw list then
+                                    }
+                                }
+                                _ => unimplemented!(), // FIXME: error handling or raw list then
+                            }
+                        }
+                        _ => String::from("undefined"), // FIXME: actual error handling
                 })
             }
         }
     };
 }
 
-// TODO: remove undefined once every case is implemented
+// IDEA:
+//macro_rules! abc {
+//    ( $k: ident, $v: ident, $sel : expr, $i : ident; $($s1 : pat => $t1 : ident ), *
+//        <=>  $($s2 : pat => $t2 : ident ), *) => {
+//            match $k.deref() {
+//                $(
+//                    &$s1 => {
+//                        match $v.deref() {
+//                            $( &$s2 => format!("{}",
+//                                ValueAt::<datatypes::Map<datatypes::$t2, datatypes::$t2>>
+//                                ::value_at($sel, $i)?),
+////                            _ => unimplemented!(), // FIXME: error handling or raw list then
+//                            ) *
+//                        }
+//                    }
+//                ) *
+//                _ => unimplemented!(), // FIXME: error handling or raw list then
+//            }
+//        }
+//}
+
 row_iter!(
     ColumnType::Bigint => Bigint,
     ColumnType::Blob => Blob,
     ColumnType::Boolean => Boolean,
-//    ColumnType::List(_) => List,
-//    ColumnType::Map(_) => Map,
-//    ColumnType::Tuple(_) => Tuple,
-//    ColumnType::Set(_) => Set,
-//    ColumnType::Udt(_) => Udt,
-
+    ColumnType::Tuple(_) => Tuple,
+    ColumnType::Udt(_) => Udt,
     ColumnType::Timestamp => Timestamp,
     ColumnType::Uuid => Uuid,
     ColumnType::Timeuuid => TimeUuid,

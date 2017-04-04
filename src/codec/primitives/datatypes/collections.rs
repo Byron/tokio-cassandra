@@ -68,7 +68,7 @@ impl<T: CqlSerializable + Display> Display for List<T> {
 }
 
 // Bounds checking needs to be done in constructor
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct Map<K, V>
     where K: CqlSerializable,
           V: CqlSerializable
@@ -78,9 +78,9 @@ pub struct Map<K, V>
     p: PhantomData<K>,
 }
 
-impl<K, V> Debug for Map<K, V>
-    where V: CqlSerializable + Debug,
-          K: CqlSerializable + Debug
+impl<K, V> Display for Map<K, V>
+    where V: CqlSerializable + Display,
+          K: CqlSerializable + Display
 {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
         for (key, value) in &self.inner {
@@ -162,7 +162,7 @@ impl<K, V> CqlSerializable for Map<K, V>
 }
 
 // Bounds checking needs to be done in constructor
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct Set<V>
     where V: CqlSerializable
 {
@@ -170,10 +170,11 @@ pub struct Set<V>
     p: PhantomData<V>,
 }
 
-impl<V> Debug for Set<V>
-    where V: CqlSerializable + Debug
+impl<V> Display for Set<V>
+    where V: CqlSerializable + Display
 {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        fmt.write_char('{')?;
         for item in &self.inner {
             let v = V::deserialize(item.clone());
             match v {
@@ -182,6 +183,7 @@ impl<V> Debug for Set<V>
             }
             fmt.write_char(',')?;
         }
+        fmt.write_char('}')?;
         Ok(())
     }
 }
@@ -281,8 +283,18 @@ impl TryFrom<Vec<Option<BytesMut>>> for BytesMutCollection {
     }
 }
 
+impl Display for BytesMutCollection {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        fmt.write_str("BytesMutCollection")
+    }
+}
+
 pub type Tuple = BytesMutCollection;
 pub type Udt = BytesMutCollection;
+
+// TODO: just an idea
+//pub type RawList = BytesMutCollection;
+//pub type RawSet = BytesMutCollection;
 
 #[cfg(test)]
 mod test {
@@ -294,5 +306,7 @@ mod test {
         let x = List::try_from(vec![Some(Boolean::new(false)), Some(Boolean::new(true)), None]).unwrap();
         assert_eq!("{false, true, NULL}", format!("{}", x));
     }
+
+    //    TODO: display test for others
 
 }
