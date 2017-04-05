@@ -39,8 +39,9 @@ impl<T: CqlSerializable> CqlSerializable for List<T> {
         Ok(List { inner: v })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
+    fn bytes_len(&self) -> Option<BytesLen> {
+        //        Some(self.inner.len() as BytesLen)
+        None
     }
 }
 
@@ -156,8 +157,8 @@ impl<K, V> CqlSerializable for Map<K, V>
         Ok(m)
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(self.inner.len() as BytesLen)
     }
 }
 
@@ -235,8 +236,8 @@ impl<V> CqlSerializable for Set<V>
         Ok(s)
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(self.inner.len() as BytesLen)
     }
 }
 
@@ -268,8 +269,8 @@ impl CqlSerializable for BytesMutCollection {
         Ok(BytesMutCollection { inner: v })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(self.inner.len() as BytesLen)
     }
 }
 

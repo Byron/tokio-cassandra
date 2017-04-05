@@ -5,6 +5,8 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use std::collections::{HashSet, HashMap};
 use std::marker::PhantomData;
 use std::fmt::{Debug, Formatter, Write};
+use codec::response::ColumnType;
+use std::ops::Deref;
 
 type BytesLen = i32;
 
@@ -25,7 +27,7 @@ pub trait CqlSerializable
 {
     fn deserialize(data: BytesMut) -> Result<Self>;
     fn serialize(&self, &mut BytesMut);
-    fn bytes_len(&self) -> BytesLen;
+    fn bytes_len(&self) -> Option<BytesLen>;
 }
 
 pub trait TryFrom<T>
@@ -57,9 +59,16 @@ fn serialize_bytes<T>(data: &Option<T>, buf: &mut BytesMut)
 {
     match data {
         &Some(ref item) => {
-            //            FIXME: bounds check
-            ::codec::primitives::encode::int(item.bytes_len(), buf);
-            item.serialize(buf);
+            if let Some(len) = item.bytes_len() {
+                ::codec::primitives::encode::int(len, buf);
+                item.serialize(buf);
+            } else {
+                let mut intermediate = BytesMut::with_capacity(1024); // FIXME: proper constant here
+                item.serialize(&mut intermediate);
+                // FIXME: bounds check
+                ::codec::primitives::encode::int(intermediate.len() as i32, buf);
+                buf.extend(intermediate);
+            }
         }
         &None => ::codec::primitives::encode::bytes(&CqlBytes::null_value(), buf),
     }
@@ -87,10 +96,64 @@ fn deserialize_bytes<T>(buf: BytesMut) -> Result<(BytesMut, Option<T>)>
         }))
 }
 
-fn deserialize_bytesmut(buf: BytesMut) -> Result<(BytesMut, Option<BytesMut>)> {
+pub fn deserialize_bytesmut(buf: BytesMut) -> Result<(BytesMut, Option<BytesMut>)> {
     let (data, bytes) = ::codec::primitives::decode::bytes(buf)?;
     Ok((data, bytes.as_option()))
 }
+
+macro_rules! display_type {
+    ($($s : pat => $t : ident ), *) => {
+        pub fn display_cell(coltype: &ColumnType, value: Option<BytesMut>) -> Result<String> {
+            if let Some(value) = value {
+                Ok(match *coltype {
+                    $ (
+                        $s => format!("{}", $t::deserialize(value)?),
+                    ) *
+                    ColumnType::List(ref t) | ColumnType::Set(ref t) => {
+                        let mut s = String::new();
+                        let (data, n) = ::codec::primitives::decode::int(value)?;
+                        let mut d = data;
+
+                        write!(&mut s, "[").chain_err(|| "Cannot Write")?;
+                        for i in 1..n+1 {
+                            let (data, item) = deserialize_bytesmut(d)?;
+                            println!("item = {:?}", item);
+                            write!(&mut s, "{}", display_cell(t.deref(), item)?).chain_err(|| "Cannot Write")?;
+                            if i != n  {
+                                write!(&mut s, ", ").chain_err(|| "Cannot Write")?;
+                            }
+                            d = data;
+                        }
+                        write!(&mut s, "]").chain_err(|| "Cannot Write")?;
+                        s
+                    }
+                    _ => unimplemented!()
+                })
+            } else {
+                Ok(format!("NULL"))
+            }
+        }
+    }
+}
+
+display_type!(
+    ColumnType::Bigint => Bigint,
+    ColumnType::Blob => Blob,
+    ColumnType::Boolean => Boolean,
+    ColumnType::Tuple(_) => Tuple,
+    ColumnType::Udt(_) => Udt,
+    ColumnType::Timestamp => Timestamp,
+    ColumnType::Uuid => Uuid,
+    ColumnType::Timeuuid => TimeUuid,
+    ColumnType::Double => Double,
+    ColumnType::Float => Float,
+    ColumnType::Int => Int,
+    ColumnType::Decimal => Decimal,
+    ColumnType::Varint => Varint,
+    ColumnType::Inet => Inet,
+    ColumnType::Varchar => Varchar,
+    ColumnType::Ascii => Ascii
+);
 
 #[cfg(test)]
 mod test_encode_decode {
@@ -185,6 +248,17 @@ mod test_encode_decode {
     #[test]
     fn list_double() {
         let to_encode = List::try_from(vec![Some(Double::new(1.23)), Some(Double::new(2.34))]).unwrap();
+        assert_serialization_deserialization(to_encode);
+    }
+
+    #[test]
+    fn list_nested() {
+        let to_encode = List::try_from(vec![Some(List::try_from(vec![Some(Varchar::try_from("a").unwrap())])
+                                                     .unwrap()),
+                                            Some(List::try_from(vec![Some(Varchar::try_from("b").unwrap()),
+                                                                     Some(Varchar::try_from("cd").unwrap())])
+                                                         .unwrap())])
+                .unwrap();
         assert_serialization_deserialization(to_encode);
     }
 

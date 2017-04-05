@@ -26,8 +26,8 @@ impl CqlSerializable for Blob {
         Ok(Blob { inner: data })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(self.inner.len() as BytesLen)
     }
 }
 

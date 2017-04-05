@@ -26,8 +26,8 @@ impl CqlSerializable for Bigint {
         Ok(Bigint { inner: long })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        8
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(8)
     }
 }
 
@@ -61,8 +61,8 @@ impl CqlSerializable for Varint {
         Ok(Varint { inner: data })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(self.inner.len() as BytesLen)
     }
 }
 
@@ -115,8 +115,8 @@ impl CqlSerializable for Double {
         Ok(Double { inner: v })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        8
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(8)
     }
 }
 
@@ -152,8 +152,8 @@ impl CqlSerializable for Float {
         Ok(Float { inner: v })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        4
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(4)
     }
 }
 
@@ -188,8 +188,8 @@ impl CqlSerializable for Int {
         Ok(Int { inner: v })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        4
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(4)
     }
 }
 
@@ -223,8 +223,8 @@ impl CqlSerializable for Decimal {
            })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        4 + self.unscaled.bytes_len()
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(4 + self.unscaled.bytes_len().unwrap_or(0))
     }
 }
 

@@ -32,8 +32,8 @@ impl CqlSerializable for Ascii {
         Ok(Ascii { inner: data })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(self.inner.len() as BytesLen)
     }
 }
 
@@ -71,8 +71,8 @@ impl CqlSerializable for Text {
         Ok(Text { inner: String::from(::std::str::from_utf8(data.as_ref()).unwrap()) })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        self.inner.len() as BytesLen
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(self.inner.len() as BytesLen)
     }
 }
 

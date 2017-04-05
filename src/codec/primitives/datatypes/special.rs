@@ -34,10 +34,10 @@ impl CqlSerializable for Inet {
            })
     }
 
-    fn bytes_len(&self) -> BytesLen {
+    fn bytes_len(&self) -> Option<BytesLen> {
         match *self {
-            Inet::Ipv4(_) => 4,
-            Inet::Ipv6(_) => 16,
+            Inet::Ipv4(_) => Some(4),
+            Inet::Ipv6(_) => Some(16),
         }
     }
 }
@@ -76,8 +76,8 @@ impl CqlSerializable for Timestamp {
         Ok(Timestamp { epoch: long })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        8
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(8)
     }
 }
 
@@ -114,8 +114,8 @@ impl CqlSerializable for Uuid {
         Ok(Uuid { inner: arr })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        16
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(16)
     }
 }
 

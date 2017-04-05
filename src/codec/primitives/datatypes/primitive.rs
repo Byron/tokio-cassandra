@@ -30,8 +30,8 @@ impl CqlSerializable for Boolean {
         Ok(Boolean { inner: b != 0x00 })
     }
 
-    fn bytes_len(&self) -> BytesLen {
-        1
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(1)
     }
 }
 
