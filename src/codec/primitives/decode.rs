@@ -204,7 +204,7 @@ mod test {
 
     #[test]
     fn string_complete() {
-        let s = CqlString::try_from("hello").unwrap();
+        let s = cql_string!("hello");
         let mut b = BytesMut::with_capacity(64);
         encode::string(&s, &mut b);
         b.extend(0..2);
@@ -216,7 +216,7 @@ mod test {
 
     #[test]
     fn string_incomplete() {
-        let s: CqlString = CqlString::try_from("hello").unwrap();
+        let s = cql_string!("hello");
         let mut b = BytesMut::with_capacity(64);
         encode::string(&s, &mut b);
         let e: BytesMut = b.into();

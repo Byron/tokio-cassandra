@@ -137,10 +137,9 @@ mod test {
 
     #[test]
     fn string_map() {
-        let sm =
-            CqlStringMap::try_from_iter(vec![(CqlString::try_from("a").unwrap(), CqlString::try_from("av").unwrap()),
-                                             (CqlString::try_from("a").unwrap(), CqlString::try_from("av").unwrap())])
-                    .unwrap();
+        let sm = CqlStringMap::try_from_iter(vec![(cql_string!("a"), cql_string!("av")),
+                                                  (cql_string!("a"), cql_string!("av"))])
+                .unwrap();
 
         let mut buf = BytesMut::with_capacity(64);
         encode::string_map(&sm, &mut buf);
@@ -156,9 +155,7 @@ mod test {
         let slb = ["c", "d"];
         let csl1 = CqlStringList::try_from_iter_easy(sla.iter().cloned()).unwrap();
         let csl2 = CqlStringList::try_from_iter_easy(slb.iter().cloned()).unwrap();
-        let smm = CqlStringMultiMap::try_from_iter(vec![(CqlString::try_from("a").unwrap(), csl1),
-                                                        (CqlString::try_from("b").unwrap(), csl2)])
-                .unwrap();
+        let smm = CqlStringMultiMap::try_from_iter(vec![(cql_string!("a"), csl1), (cql_string!("b"), csl2)]).unwrap();
 
         let mut buf = BytesMut::with_capacity(64);
         encode::string_multimap(&smm, &mut buf);

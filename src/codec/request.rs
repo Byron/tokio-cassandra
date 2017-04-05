@@ -254,7 +254,7 @@ mod test {
     #[test]
     fn from_startup_req() {
         let o = Message::Startup(StartupMessage {
-                                     cql_version: CqlString::try_from("3.2.1").unwrap(),
+                                     cql_version: cql_string!("3.2.1"),
                                      compression: None,
                                  });
 
@@ -332,7 +332,7 @@ mod test {
         o.page_size = Some(2);
         assert_eq!(o.compute_flags(), 0x47u8);
 
-        o.paging_state = Some(CqlBytes::try_from(Vec::new()).unwrap());
+        o.paging_state = Some(cql_bytes!());
         assert_eq!(o.compute_flags(), 0x4fu8);
 
         o.serial_consistency = Some(CqlConsistency::LocalSerial);
@@ -344,7 +344,7 @@ mod test {
 
     #[test]
     fn encode_query_values_positional() {
-        let values = vec![cql_bytes!(0u8, 1), CqlBytes::try_from(vec![2u8, 3]).unwrap()];
+        let values = vec![cql_bytes!(0u8, 1), cql_bytes!(2u8, 3)];
         let values = QueryValues::Positional(values);
 
         let mut buf = BytesMut::with_capacity(64);

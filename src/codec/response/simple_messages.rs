@@ -119,11 +119,10 @@ mod test {
     fn supported_message_latest_cql_version() {
         let versions = ["3.2.1", "3.1.2", "4.0.1"];
         let vm = CqlStringList::try_from_iter_easy(versions.iter().cloned()).unwrap();
-        let smm = CqlStringMultiMap::try_from_iter(vec![(CqlString::try_from("CQL_VERSION").unwrap(), vm)]).unwrap();
+        let smm = CqlStringMultiMap::try_from_iter(vec![(cql_string!("CQL_VERSION"), vm)]).unwrap();
         let msg = SupportedMessage::from(smm);
 
-        assert_eq!(msg.latest_cql_version(),
-                   Some(&CqlString::try_from("4.0.1").unwrap()));
+        assert_eq!(msg.latest_cql_version(), Some(&cql_string!("4.0.1")));
     }
 
     #[test]
@@ -132,7 +131,7 @@ mod test {
         let buf = Vec::from(skip_header(&msg[..])).into();
         let res = AuthenticateMessage::decode(Version3, buf).unwrap();
 
-        let authenticator = CqlString::try_from("org.apache.cassandra.auth.PasswordAuthenticator").unwrap();
+        let authenticator = cql_string!("org.apache.cassandra.auth.PasswordAuthenticator");
 
         assert_eq!(res.authenticator, authenticator);
     }
@@ -154,6 +153,6 @@ mod test {
 
         assert_eq!(res.code, 256);
         assert_eq!(res.text,
-                   CqlString::try_from("Username and/or password are incorrect").unwrap());
+                   cql_string!("Username and/or password are incorrect"));
     }
 }

@@ -127,6 +127,7 @@ macro_rules! display_type {
                         write!(&mut s, "]").chain_err(|| "Cannot Write")?;
                         s
                     }
+//                    TODO: Map, Udt, Tuple
                     _ => unimplemented!()
                 })
             } else {
