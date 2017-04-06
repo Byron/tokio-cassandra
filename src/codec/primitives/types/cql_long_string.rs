@@ -10,7 +10,7 @@ pub struct CqlLongString {
 impl AsRef<str> for CqlLongString {
     fn as_ref(&self) -> &str {
         // FIXME: this is a costly operation - consider unsafe unchecked_from_utf8
-        ::std::str::from_utf8(&self.buf.as_ref()).unwrap()
+        unsafe { ::std::str::from_utf8_unchecked(&self.buf.as_ref()) }
     }
 }
 

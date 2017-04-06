@@ -10,7 +10,7 @@ pub struct CqlString {
 
 impl AsRef<str> for CqlString {
     fn as_ref(&self) -> &str {
-        ::std::str::from_utf8(&self.buf.as_ref()).unwrap()
+        unsafe { ::std::str::from_utf8_unchecked(&self.buf.as_ref()) }
     }
 }
 

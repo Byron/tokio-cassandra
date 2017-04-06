@@ -169,7 +169,6 @@ impl ColumnType {
                 (buf, inner.map(|v| ColumnType::Set(Box::new(v))))
             }
                    0x0030 => {
-                //                       TODO: looks a bit complicated, see if there is potential for optimization
                 let (buf, ks) = decode::string(buf)?;
                 let (buf, name) = decode::string(buf)?;
                 let (buf, n) = decode::short(buf)?;
@@ -210,7 +209,6 @@ impl ColumnType {
                 }
                 (b, Some(ColumnType::Tuple(TupleDefinition(fields))))
             }
-
                    _ => unimplemented!(),
                }
            })
