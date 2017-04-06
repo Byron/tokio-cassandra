@@ -1,5 +1,7 @@
 use super::*;
 use std::fmt::Display;
+use bytes::BufMut;
+use byteorder::ByteOrder;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Bigint {

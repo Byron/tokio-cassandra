@@ -1,9 +1,7 @@
 use codec::primitives::datatypes::{self, CqlSerializable};
 use codec::primitives::decode;
 use bytes::BytesMut;
-use codec::response::{ColumnSpec, ColumnType};
-use std::ops::Deref;
-use std::fmt::Write;
+use codec::response::ColumnSpec;
 
 use super::*;
 
@@ -98,6 +96,7 @@ mod test {
     use codec::primitives::{CqlFrom, CqlString};
     use bytes::BytesMut;
     use super::super::{ColumnSpec, RowsMetadata, ColumnType, TableSpec};
+    use std::fmt::Write;
 
     fn as_bytes<T: CqlSerializable>(data: &T) -> Option<BytesMut> {
         let mut bytes = BytesMut::with_capacity(128);
@@ -187,12 +186,15 @@ mod test {
                            as_bytes(&Double::new(1.243))],
         };
 
+        let mut s = String::new();
+
         for result in row.col_iter(&row_metadata) {
-            //            let (spec, string) = result?;
+            let (spec, string) = result.unwrap();
+            write!(&mut s, "{} = {}\n", spec.colname(), string).unwrap();
         }
 
-        // TODO: write test
-        //        assert_eq!(from, to);
+        assert_eq!("testtable.col1 = 123\ntesttable.col2 = hello world\ntesttable.col3 = 1.243\n",
+                   s);
     }
 
     //                TODO: Test for Errorcase
@@ -213,5 +215,30 @@ mod test {
         let bytes = as_bytes(&l);
         let s = display_cell(&cs.coltype(), bytes).unwrap();
         assert_eq!(s, "[[a], [b, cd]]");
+    }
+
+    #[test]
+    fn display_nested_map() {
+        let cs = ColumnSpec::WithoutGlobalSpec {
+            table_spec: TableSpec::new("ks", "testtable"),
+            name: cql_string!("col1"),
+            column_type: ColumnType::Map(Box::new(ColumnType::Varchar),
+                                         Box::new(ColumnType::List(Box::new(ColumnType::Varchar)))),
+        };
+
+        let m = {
+            let mut map = Map::new();
+            map.insert(Varchar::try_from("a").unwrap(),
+                       Some(List::try_from(vec![Some(Varchar::try_from("1").unwrap())]).unwrap()));
+            map.insert(Varchar::try_from("b").unwrap(),
+                       Some(List::try_from(vec![Some(Varchar::try_from("1").unwrap()),
+                                                Some(Varchar::try_from("2").unwrap())])
+                                    .unwrap()));
+            map
+        };
+
+        let bytes = as_bytes(&m);
+        let s = display_cell(&cs.coltype(), bytes).unwrap();
+        assert!(s == "{a: [1], b: [1, 2]}" || s == "{b: [1, 2], a: [1]}");
     }
 }

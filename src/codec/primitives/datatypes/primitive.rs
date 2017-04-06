@@ -1,5 +1,6 @@
 use super::*;
 use std::fmt::Display;
+use bytes::BufMut;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Boolean {

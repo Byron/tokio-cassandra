@@ -74,7 +74,8 @@ pub struct Map<K, V>
     where K: CqlSerializable,
           V: CqlSerializable
 {
-    //    FIXME: is this a good idea to use BytesMut here?
+    // FIXME: is this a good idea to use BytesMut here?
+    // FIXME: Option is probably overengineered, since None is semantically the same as not existent here
     inner: HashMap<BytesMut, Option<V>>,
     p: PhantomData<K>,
 }

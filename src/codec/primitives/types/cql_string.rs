@@ -1,6 +1,7 @@
 use super::CqlFrom;
 use std::hash::{Hasher, Hash};
 use bytes::BytesMut;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CqlString {
@@ -10,6 +11,12 @@ pub struct CqlString {
 impl AsRef<str> for CqlString {
     fn as_ref(&self) -> &str {
         ::std::str::from_utf8(&self.buf.as_ref()).unwrap()
+    }
+}
+
+impl Display for CqlString {
+    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        fmt.write_str(self.as_ref())
     }
 }
 

@@ -1,10 +1,10 @@
-use byteorder::{ByteOrder, BigEndian};
+use byteorder::BigEndian;
 use codec::primitives::CqlBytes;
-use bytes::{BufMut, BytesMut};
+use bytes::BytesMut;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::collections::{HashSet, HashMap};
 use std::marker::PhantomData;
-use std::fmt::{Debug, Formatter, Write};
+use std::fmt::{Formatter, Write};
 use codec::response::ColumnType;
 use std::ops::Deref;
 
@@ -117,7 +117,6 @@ macro_rules! display_type {
                         write!(&mut s, "[").chain_err(|| "Cannot Write")?;
                         for i in 1..n+1 {
                             let (data, item) = deserialize_bytesmut(d)?;
-                            println!("item = {:?}", item);
                             write!(&mut s, "{}", display_cell(t.deref(), item)?).chain_err(|| "Cannot Write")?;
                             if i != n  {
                                 write!(&mut s, ", ").chain_err(|| "Cannot Write")?;
@@ -127,7 +126,29 @@ macro_rules! display_type {
                         write!(&mut s, "]").chain_err(|| "Cannot Write")?;
                         s
                     }
-//                    TODO: Map, Udt, Tuple
+                    ColumnType::Map(ref k, ref v) => {
+                        let mut s = String::new();
+                        let (data, n) = ::codec::primitives::decode::int(value)?;
+                        let mut d = data;
+
+                        write!(&mut s, "{{").chain_err(|| "Cannot Write")?;
+                        for i in 1..n+1 {
+                            let (data, kb) = deserialize_bytesmut(d)?;
+                            write!(&mut s, "{}", display_cell(k.deref(), kb)?).chain_err(|| "Cannot Write")?;
+
+                            let (data, vb) = deserialize_bytesmut(data)?;
+                            write!(&mut s, ": {}", display_cell(v.deref(), vb)?).chain_err(|| "Cannot Write")?;
+
+                            if i != n  {
+                                write!(&mut s, ", ").chain_err(|| "Cannot Write")?;
+                            }
+                            d = data
+                        }
+                        write!(&mut s, "}}").chain_err(|| "Cannot Write")?;
+                        s
+                    }
+//TODO:
+// Udt, Tuple
                     _ => unimplemented!()
                 })
             } else {

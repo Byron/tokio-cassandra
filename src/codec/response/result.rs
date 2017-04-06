@@ -76,6 +76,17 @@ impl ColumnSpec {
             &ColumnSpec::WithGlobalSpec { column_type: ref ctype, .. } => ctype,
         }
     }
+
+    pub fn colname(&self) -> String {
+        match self {
+            &ColumnSpec::WithoutGlobalSpec {
+                 ref name,
+                 table_spec: ref tspec,
+                 ..
+             } => format!("{}.{}", tspec.table, name),
+            &ColumnSpec::WithGlobalSpec { ref name, .. } => format!("{}", name),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -481,26 +492,14 @@ mod test {
                 truncated_at: row.value_at(17).unwrap(),
             };
 
-            //             TODO: check the result
+            assert_eq!(row.key, Varchar::try_from("local").unwrap());
+            assert_eq!(row.bootstrapped, Varchar::try_from("COMPLETED").unwrap());
+            assert_eq!(row.cluster_name, Varchar::try_from("Test Cluster").unwrap());
         } else {
             panic!("Expected to have rows metadata");
         }
     }
 
-    //    #[test]
-    //    fn decode_result_body_row_iterator() {
-    //        let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_rows.msg");
-    //        let buf = Vec::from(skip_header(&msg[..])).into();
-    //        let (buf, result_header) = ResultHeader::decode(Version3, buf).unwrap();
-    //
-    //        if let ResultHeader::Rows(rows_metadata) = result_header.unwrap() {
-    //            let (_, row) = Row::decode(buf, &rows_metadata).unwrap();
-    //            let row = row.unwrap();
-    //
-    //        } else {
-    //            panic!("Expected to have rows metadata");
-    //        }
-    //    }
     // TODO: write test with chunking of result!!! random chunking?
 
     #[test]
