@@ -2,6 +2,7 @@ use super::super::errors::*;
 use tokio_cassandra::codec::header::Header;
 #[cfg(not(feature = "colors"))]
 use std::io::Write;
+use std::io;
 #[cfg(not(feature = "colors"))]
 use clap;
 
@@ -27,20 +28,37 @@ impl Default for Demo {
 arg_enum! {
     #[allow(non_camel_case_types)]
     #[derive(Debug)]
+    pub enum ColorMode {
+        auto,
+        always,
+        off
+    }
+}
+
+arg_enum! {
+    #[allow(non_camel_case_types)]
+    #[derive(Debug)]
     pub enum OutputFormat {
         yaml,
         json
     }
 }
 
-#[cfg(not(feature = "colors"))]
-pub fn output_result<W: Write>(out: &mut W, res: &Demo, fmt: OutputFormat, args: &clap::ArgMatches) -> Result<()> {
+fn output_result_to_stdout_without_color(res: &Demo, fmt: OutputFormat) -> Result<()> {
+    let s = io::stdout();
+    let mut out = s.lock();
     match fmt {
-        OutputFormat::json => ::serde_json::ser::to_writer_pretty(out, res)?,
-        OutputFormat::yaml => ::serde_yaml::to_writer(out, res)?,
+        OutputFormat::json => ::serde_json::ser::to_writer_pretty(&mut out, res)?,
+        OutputFormat::yaml => ::serde_yaml::to_writer(&mut out, res)?,
     }
     Ok(())
 }
+
+#[cfg(not(feature = "colors"))]
+pub fn output_result(res: &Demo, fmt: OutputFormat, _args: &clap::ArgMatches) -> Result<()> {
+    output_result_to_stdout_without_color(res, fmt)
+}
+
 #[cfg(feature = "colors")]
 pub use self::highlighting::output_result;
 
@@ -52,7 +70,7 @@ mod highlighting {
     use syntect::highlighting::ThemeSet;
     use syntect::parsing::SyntaxSet;
     use syntect::dumps::from_binary;
-    use super::{Demo, OutputFormat, Result};
+    use super::{Demo, OutputFormat, Result, ColorMode, output_result_to_stdout_without_color};
 
     use clap;
 
@@ -96,18 +114,35 @@ mod highlighting {
         }
     }
 
-    pub fn output_result<W: Write>(out: &mut W, res: &Demo, fmt: OutputFormat, args: &clap::ArgMatches) -> Result<()> {
+    pub fn output_result(res: &Demo, fmt: OutputFormat, args: &clap::ArgMatches) -> Result<()> {
+        let use_color = {
+            let color_mode = args.value_of("color")
+                .expect("clap to work")
+                .parse()
+                .expect("clap to work");
+            match color_mode {
+                ColorMode::always => true,
+                ColorMode::off => false,
+                ColorMode::auto => false,
+            }
+        };
+
+        if !use_color {
+            return output_result_to_stdout_without_color(res, fmt);
+        }
+
         let ss = {
             let mut ss: SyntaxSet = from_binary(include_bytes!("../../packs/syntax.newlines.packdump"));
             ss.link_syntaxes();
             ss
         };
         let ts: ThemeSet = from_binary(include_bytes!("../../packs/themes.themedump"));
-        // TODO: allow to chose theme from a preselected list
         let theme = ts.themes
             .get(args.value_of("theme").expect("clap to work"))
             .expect("theme to exist");
 
+        let s = io::stdout();
+        let out = s.lock();
         match fmt {
             OutputFormat::json => {
                 let mut hl = Highlighter {

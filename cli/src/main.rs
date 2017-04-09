@@ -16,29 +16,37 @@ extern crate env_logger;
 use clap::{SubCommand, Arg};
 
 use tcc::errors::*;
-use tcc::{CertKind, OutputFormat, CliProtoVersion, ConnectionOptions, THEME_NAMES};
+use tcc::{CertKind, ColorMode, OutputFormat, CliProtoVersion, ConnectionOptions, THEME_NAMES};
 
 quick_main!(run);
 
 #[cfg(not(feature = "colors"))]
-fn with_highlight_flags<'a, 'b>(sc: clap::App<'a, 'b>) -> clap::App<'a, 'b> {
+fn with_highlight_flags<'a, 'b>(sc: clap::App<'a, 'b>, default_color: &'a str) -> clap::App<'a, 'b> {
     sc
 }
 #[cfg(feature = "colors")]
-fn with_highlight_flags<'a, 'b>(sc: clap::App<'a, 'b>) -> clap::App<'a, 'b> {
+fn with_highlight_flags<'a, 'b>(sc: clap::App<'a, 'b>, default_color: &'a str) -> clap::App<'a, 'b> {
     sc.arg(Arg::with_name("theme")
-               .required(false)
-               .takes_value(true)
-               .long("theme")
-               .possible_values(&THEME_NAMES)
-               .default_value(&THEME_NAMES[0])
-               .help("The color scheme at which the syntax is highlighted."))
+                 .required(false)
+                 .takes_value(true)
+                 .long("theme")
+                 .possible_values(&THEME_NAMES)
+                 .default_value(&THEME_NAMES[0])
+                 .help("The color scheme at which the syntax is highlighted."))
+        .arg(Arg::with_name("color")
+                 .required(false)
+                 .takes_value(true)
+                 .long("color")
+                 .possible_values(&ColorMode::variants())
+                 .default_value(default_color)
+                 .help("Control how color is generated. 'auto' outputs it to a tty only, but won't do that "))
 }
 
 pub fn run() -> Result<()> {
     env_logger::init().unwrap();
     let default_cert_type = format!("{}", CertKind::pkcs12);
     let default_output_format = format!("{}", OutputFormat::json);
+    let default_color = format!("{}", ColorMode::auto);
 
     let mut app: clap::App = app_from_crate!();
     let query_sc = SubCommand::with_name("query")
@@ -161,7 +169,7 @@ pub fn run() -> Result<()> {
                    password can be provided by separating it with a colon, such as in \
                    /path/to/cert:password."))
         .subcommand(SubCommand::with_name("test-connection"))
-        .subcommand(with_highlight_flags(query_sc));
+        .subcommand(with_highlight_flags(query_sc, &default_color));
     let args: clap::ArgMatches = app.get_matches();
     let opts = ConnectionOptions::try_from(&args)?;
 

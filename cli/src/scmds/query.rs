@@ -109,11 +109,8 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
             // and thus prevents an entirely unnecessary copy
             let _query = CqlLongString::try_from(&query)?;
 
-            let s = io::stdout();
-            let mut lio = s.lock();
             let demo = Demo::default();
-            output_result(&mut lio,
-                          &demo,
+            output_result(&demo,
                           args.value_of("output-format")
                               .expect("clap to work")
                               .parse()

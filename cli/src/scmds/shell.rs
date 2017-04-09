@@ -3,7 +3,6 @@ use super::super::args::ConnectionOptions;
 use super::utils::Demo;
 
 use clap;
-use std::io;
 use std::rc::Rc;
 use std::ascii::AsciiExt;
 
@@ -45,9 +44,7 @@ fn execute<T: Terminal>(rd: &mut Reader<T>,
         });
         match core.run(req) {
             Ok(result) => {
-                let s = io::stdout();
-                let mut lio = s.lock();
-                output_result(&mut lio, &result, OutputFormat::yaml, args)?;
+                output_result(&result, OutputFormat::yaml, args)?;
                 println!();
             }
             Err(err) => {
