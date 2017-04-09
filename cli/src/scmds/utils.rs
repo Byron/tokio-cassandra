@@ -2,7 +2,10 @@ use super::super::errors::*;
 use tokio_cassandra::codec::header::Header;
 #[cfg(not(feature = "colors"))]
 use std::io::Write;
+#[cfg(not(feature = "colors"))]
+use clap;
 
+pub const THEME_NAMES: [&'static str; 3] = ["base16-ocean.dark", "Solarized (dark)", "Solarized (light)"];
 
 #[derive(Deserialize, Serialize)]
 pub struct Demo {
@@ -31,7 +34,7 @@ arg_enum! {
 }
 
 #[cfg(not(feature = "colors"))]
-pub fn output_result<W: Write>(out: &mut W, res: &Demo, fmt: OutputFormat) -> Result<()> {
+pub fn output_result<W: Write>(out: &mut W, res: &Demo, fmt: OutputFormat, args: &clap::ArgMatches) -> Result<()> {
     match fmt {
         OutputFormat::json => ::serde_json::ser::to_writer_pretty(out, res)?,
         OutputFormat::yaml => ::serde_yaml::to_writer(out, res)?,
@@ -50,6 +53,8 @@ mod highlighting {
     use syntect::parsing::SyntaxSet;
     use syntect::dumps::from_binary;
     use super::{Demo, OutputFormat, Result};
+
+    use clap;
 
     struct Highlighter<'a, W>
         where W: Write
@@ -91,7 +96,7 @@ mod highlighting {
         }
     }
 
-    pub fn output_result<W: Write>(out: &mut W, res: &Demo, fmt: OutputFormat) -> Result<()> {
+    pub fn output_result<W: Write>(out: &mut W, res: &Demo, fmt: OutputFormat, args: &clap::ArgMatches) -> Result<()> {
         let ss = {
             let mut ss: SyntaxSet = from_binary(include_bytes!("../../packs/syntax.newlines.packdump"));
             ss.link_syntaxes();
@@ -100,7 +105,7 @@ mod highlighting {
         let ts: ThemeSet = from_binary(include_bytes!("../../packs/themes.themedump"));
         // TODO: allow to chose theme from a preselected list
         let theme = ts.themes
-            .get("Solarized (dark)")
+            .get(args.value_of("theme").expect("clap to work"))
             .expect("theme to exist");
 
         match fmt {

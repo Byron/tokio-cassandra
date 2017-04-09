@@ -2,6 +2,7 @@ use super::super::errors::*;
 use super::super::args::ConnectionOptions;
 use super::utils::Demo;
 
+use clap;
 use std::io;
 use std::rc::Rc;
 use std::ascii::AsciiExt;
@@ -25,7 +26,12 @@ fn prompt<T: Terminal>(rd: &mut Reader<T>, s: PromptKind) {
                   });
 }
 
-fn execute<T: Terminal>(rd: &mut Reader<T>, _client: &mut ClientHandle, core: &mut Core, query: String) -> Result<()> {
+fn execute<T: Terminal>(rd: &mut Reader<T>,
+                        _client: &mut ClientHandle,
+                        core: &mut Core,
+                        query: String,
+                        args: &clap::ArgMatches)
+                        -> Result<()> {
     {
         use futures::future;
         let req = future::lazy(|| {
@@ -41,7 +47,7 @@ fn execute<T: Terminal>(rd: &mut Reader<T>, _client: &mut ClientHandle, core: &m
             Ok(result) => {
                 let s = io::stdout();
                 let mut lio = s.lock();
-                output_result(&mut lio, &result, OutputFormat::yaml)?;
+                output_result(&mut lio, &result, OutputFormat::yaml, args)?;
                 println!();
             }
             Err(err) => {
@@ -56,7 +62,8 @@ fn execute<T: Terminal>(rd: &mut Reader<T>, _client: &mut ClientHandle, core: &m
 
 pub fn interactive<T: Terminal>(mut rd: Reader<T>,
                                 opts: ConnectionOptions,
-                                initial_query: Option<String>)
+                                initial_query: Option<String>,
+                                args: &clap::ArgMatches)
                                 -> Result<()> {
 
     rd.set_completer(Rc::new(CqlCompleter));
@@ -66,7 +73,7 @@ pub fn interactive<T: Terminal>(mut rd: Reader<T>,
     let mut client = core.run(client)?;
 
     if let Some(query) = initial_query {
-        execute(&mut rd, &mut client, &mut core, query)?;
+        execute(&mut rd, &mut client, &mut core, query, args)?;
     }
 
     while let Ok(res) = rd.read_line() {
@@ -77,7 +84,7 @@ pub fn interactive<T: Terminal>(mut rd: Reader<T>,
             }
             ReadResult::Input(line) => {
                 rd.add_history(line.to_owned());
-                execute(&mut rd, &mut client, &mut core, line)?;
+                execute(&mut rd, &mut client, &mut core, line, args)?;
             }
             ReadResult::Signal(sig) => {
                 println!();

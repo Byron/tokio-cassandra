@@ -97,7 +97,7 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
             return Ok(());
         }
         (Some(query), false, false) => query,
-        (query, true, false) => return shell::interactive(linefeed::Reader::new("cqlshell")?, opts, query),
+        (query, true, false) => return shell::interactive(linefeed::Reader::new("cqlshell")?, opts, query, args),
         (None, _interactive, _dry_run) => bail!("Query cannot be empty"),
     };
 
@@ -117,7 +117,8 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
                           args.value_of("output-format")
                               .expect("clap to work")
                               .parse()
-                              .expect("clap to work"))?;
+                              .expect("clap to work"),
+                          args)?;
             println!();
             Ok(())
         })

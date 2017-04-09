@@ -5,4 +5,4 @@ mod utils;
 
 pub use self::testcon::*;
 pub use self::query::*;
-pub use self::utils::OutputFormat;
+pub use self::utils::{THEME_NAMES, OutputFormat};
