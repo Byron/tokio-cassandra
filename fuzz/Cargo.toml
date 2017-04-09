@@ -21,7 +21,3 @@ git = "https://github.com/rust-fuzz/libfuzzer-sys.git"
 name = "decoder"
 path = "fuzzers/decoder.rs"
 
-[replace]
-
-[replace."tokio-core:0.1.4"]
-git = "https://github.com/tokio-rs/tokio-core"

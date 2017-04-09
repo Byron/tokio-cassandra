@@ -68,4 +68,4 @@ always-update:
 	$(MAKE) -C $@/etc/docker build
 	
 fuzz: always-update .cargo-fuzz
-	docker run -v $$PWD:/source cargo-fuzz cargo fuzz run decoder
+	docker run -v $$PWD:/source -w /source cargo-fuzz cargo fuzz run decoder
