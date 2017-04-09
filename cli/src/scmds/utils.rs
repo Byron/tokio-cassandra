@@ -43,7 +43,7 @@ pub use self::highlighting::output_result;
 
 #[cfg(feature = "colors")]
 mod highlighting {
-    use std::io::{self, Write, Cursor, BufRead};
+    use std::io::{self, Write, Cursor, BufRead, SeekFrom, Seek};
     use syntect::easy::HighlightLines;
     use syntect::util::as_24_bit_terminal_escaped;
     use syntect::highlighting::ThemeSet;
@@ -75,10 +75,14 @@ mod highlighting {
         }
         fn flush(&mut self) -> io::Result<()> {
             let mut line = String::new();
-            while let Ok(_) = self.cursor.read_line(&mut line) {
+            self.cursor.seek(SeekFrom::Start(0))?;
+            while let Ok(nbr) = self.cursor.read_line(&mut line) {
+                if nbr == 0 {
+                    break;
+                }
                 let escaped = {
-                    let ranges = self.hl.highlight(&line);
-                    as_24_bit_terminal_escaped(&ranges[..], true)
+                    let regions = self.hl.highlight(&line);
+                    as_24_bit_terminal_escaped(&regions[..], true)
                 };
                 self.writer.write(escaped.as_bytes())?;
                 line.clear();
@@ -88,7 +92,11 @@ mod highlighting {
     }
 
     pub fn output_result<W: Write>(out: &mut W, res: &Demo, fmt: OutputFormat) -> Result<()> {
-        let ss: SyntaxSet = from_binary(include_bytes!("../../packs/syntax.newlines.packdump"));
+        let ss = {
+            let mut ss: SyntaxSet = from_binary(include_bytes!("../../packs/syntax.newlines.packdump"));
+            ss.link_syntaxes();
+            ss
+        };
         let ts: ThemeSet = from_binary(include_bytes!("../../packs/themes.themedump"));
         // TODO: allow to chose theme from a preselected list
         let theme = ts.themes
