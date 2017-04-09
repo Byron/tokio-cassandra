@@ -18,6 +18,8 @@ extern crate futures;
 extern crate dns_lookup;
 extern crate semver;
 #[cfg(feature = "colors")]
+extern crate isatty;
+#[cfg(feature = "colors")]
 extern crate syntect;
 
 pub mod errors {

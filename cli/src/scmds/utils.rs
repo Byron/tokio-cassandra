@@ -71,6 +71,7 @@ mod highlighting {
     use syntect::parsing::SyntaxSet;
     use syntect::dumps::from_binary;
     use super::{Demo, OutputFormat, Result, ColorMode, output_result_to_stdout_without_color};
+    use isatty;
 
     use clap;
 
@@ -123,7 +124,7 @@ mod highlighting {
             match color_mode {
                 ColorMode::always => true,
                 ColorMode::off => false,
-                ColorMode::auto => false,
+                ColorMode::auto => isatty::stdout_isatty(),
             }
         };
 

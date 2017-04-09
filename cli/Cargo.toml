@@ -30,6 +30,10 @@ tokio-core = "0.1"
 tokio-proto = "0.1"
 tokio-service = "0.1"
 
+[dependencies.isatty]
+optional = true
+version = "0.1"
+
 [dependencies.syntect]
 default-features = false
 optional = true
@@ -41,7 +45,7 @@ path = ".."
 version = "0.0"
 
 [features]
-colors = ["syntect"]
+colors = ["syntect", "isatty"]
 default = ["colors"]
 
 [lib]
