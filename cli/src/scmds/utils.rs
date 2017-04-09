@@ -51,10 +51,20 @@ mod highlighting {
     use syntect::dumps::from_binary;
     use super::{Demo, OutputFormat, Result};
 
-    struct Highlighter<'a, W> {
+    struct Highlighter<'a, W>
+        where W: Write
+    {
         hl: HighlightLines<'a>,
         cursor: Cursor<Vec<u8>>,
         writer: W,
+    }
+
+    impl<'a, W> Drop for Highlighter<'a, W>
+        where W: Write
+    {
+        fn drop(&mut self) {
+            self.flush().ok();
+        }
     }
 
     impl<'a, W> Write for Highlighter<'a, W>
@@ -64,7 +74,6 @@ mod highlighting {
             self.cursor.write(buf)
         }
         fn flush(&mut self) -> io::Result<()> {
-            //        self.cursor.seek(SeekFrom::Start(0)).map(|e| ())?;
             let mut line = String::new();
             while let Ok(_) = self.cursor.read_line(&mut line) {
                 let escaped = {

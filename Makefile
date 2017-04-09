@@ -52,7 +52,7 @@ attach-docker-db:
 	DEBUG_RUN_IMAGE=true $(MAKE) $(type)-docker-db
 
 cli-execute:
-	cd cli && cargo run --all-features -- -h localhost query -o yaml -i
+	cd cli && cargo run --all-features -- -h localhost query -o yaml -e cql-query
 
 secrets:
 	$(MAKE) -C etc/docker-cassandra $@
