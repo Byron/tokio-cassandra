@@ -26,7 +26,8 @@ impl Options {
             let mut f: Box<Read> = match fp {
                 "-" => Box::new(s.lock()),
                 _ => {
-                    Box::new(File::open(&fp).chain_err(|| format!("Failed to open CQL file at '{}' for reading", fp))?)
+                    Box::new(File::open(&fp)
+                                 .chain_err(|| format!("Failed to open CQL file at '{}' for reading", fp))?)
                 }
             };
             let mut buf = String::new();

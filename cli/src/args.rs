@@ -81,7 +81,8 @@ impl FromStr for Pk12WithOptionalPassword {
             (Some(fp), Some(password)) => {
                 let fp = str::from_utf8(fp).expect("str -> bytes -> str to work");
                 let mut buf = Vec::new();
-                File::open(fp).chain_err(|| format!("Failed to open file at '{}'", fp))?
+                File::open(fp)
+                    .chain_err(|| format!("Failed to open file at '{}'", fp))?
                     .read_to_end(&mut buf)?;
                 Ok(Pk12WithOptionalPassword {
                        content: buf,
@@ -128,7 +129,8 @@ impl ConnectionOptions {
                    },
                },
                addr: {
-                   net::IpAddr::from_str(host).or_else(|parse_err| {
+                   net::IpAddr::from_str(host)
+                       .or_else(|parse_err| {
                 lookup_host(host)
                     .map_err(|err| {
                                  Error::from_kind(format!("Failed to parse '{}' with error: {:?} and could not lookup \
