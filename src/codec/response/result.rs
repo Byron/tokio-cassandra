@@ -116,7 +116,7 @@ pub enum ColumnType {
 
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TupleDefinition(Vec<ColumnType>);
+pub struct TupleDefinition(pub Vec<ColumnType>);
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UdtDefinition {

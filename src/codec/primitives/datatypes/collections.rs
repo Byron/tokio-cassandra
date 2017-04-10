@@ -316,10 +316,11 @@ impl<'a> Display for Udt<'a> {
         let mut i = 0;
         for bytes in &self.inner.inner {
             let t = &self.def.fields[i];
-            // FIXME: no unwrap and clone()
+            // FIXME: clone() needed?
             fmt.write_str(&t.0.as_ref())?;
             fmt.write_str(": ")?;
-            fmt.write_str(&super::display_cell(&t.1, bytes.clone()).unwrap())?;
+            fmt.write_str(&super::display_cell(&t.1, bytes.clone())
+                                .map_err(|_| ::std::fmt::Error)?)?;
             i += 1;
 
             if i != field_len {
@@ -346,7 +347,25 @@ impl<'a> Tuple<'a> {
 
 impl<'a> Display for Tuple<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
-        unimplemented!()
+        let field_len = self.def.0.len();
+        if self.inner.inner.len() != field_len {
+            panic!("Inner data fields do not fit to the number of field definitions");
+        }
+
+        fmt.write_char('(')?;
+        let mut i = 0;
+        for bytes in &self.inner.inner {
+            let t = &self.def.0[i];
+            // FIXME: clone() needed?
+            fmt.write_str(&super::display_cell(t, bytes.clone())
+                                .map_err(|_| ::std::fmt::Error)?)?;
+            i += 1;
+
+            if i != field_len {
+                fmt.write_str(", ")?;
+            }
+        }
+        fmt.write_char(')')
     }
 }
 
@@ -376,6 +395,17 @@ mod test {
 
         assert_eq!("{eid: fgh, name: NULL, sales: 80}",
                    format!("{}", Udt::new(udt, &def)));
+    }
+
+    #[test]
+    fn tuple_display() {
+        let udt = RawTuple::try_from(vec![Some(vec![0x66, 0x67, 0x68].into()),
+                                          None,
+                                          Some(vec![0x00, 0x00, 0x00, 0x50].into())])
+                .unwrap();
+        let def = TupleDefinition(vec![ColumnType::Varchar, ColumnType::Varchar, ColumnType::Int]);
+
+        assert_eq!("(fgh, NULL, 80)", format!("{}", Tuple::new(udt, &def)));
     }
 
     //    TODO: display test for others
