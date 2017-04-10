@@ -66,16 +66,8 @@ pub struct RowIterator<'a> {
     max: usize,
 }
 
-impl<'a> RowIterator<'a> {
-    fn as_string(&self, i: usize) -> Result<String> {
-        Ok(datatypes::display_cell(&self.meta.column_spec[i].coltype(),
-                                   self.row.raw_cols[i].clone())?)
-    }
-}
-
-
 impl<'a> Iterator for RowIterator<'a> {
-    type Item = Result<(&'a ColumnSpec, String)>;
+    type Item = (&'a ColumnSpec, Option<BytesMut>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos >= self.max {
@@ -83,8 +75,7 @@ impl<'a> Iterator for RowIterator<'a> {
         } else {
             let i = self.pos;
             self.pos += 1;
-            let s = self.as_string(i).map(|v| (&self.meta.column_spec[i], v));
-            Some(s)
+            Some((&self.meta.column_spec[i], self.row.raw_cols[i].clone()))
         }
     }
 }
@@ -192,57 +183,18 @@ mod test {
 
         let mut s = String::new();
 
-        for result in row.col_iter(&row_metadata) {
-            let (spec, string) = result.unwrap();
-            write!(&mut s, "{} = {}\n", spec.colname(), string).unwrap();
+        for (spec, bytes) in row.col_iter(&row_metadata) {
+            let str = match spec.coltype() {
+                &ColumnType::Int => format!("{}", &Int::deserialize(bytes.unwrap()).unwrap()),
+                &ColumnType::Varchar => format!("{}", &Varchar::deserialize(bytes.unwrap()).unwrap()),
+                &ColumnType::Double => format!("{}", &Double::deserialize(bytes.unwrap()).unwrap()),
+                _ => panic!("unreachable in test"),
+            };
+            write!(&mut s, "{} = {}\n", spec.colname(), str).unwrap();
         }
 
         assert_eq!("testtable.col1 = 123\ntesttable.col2 = hello world\ntesttable.col3 = 1.243\n",
                    s);
     }
-
     //                TODO: Test for Errorcase
-
-    #[test]
-    fn display_nested_list() {
-        let cs = ColumnSpec::WithoutGlobalSpec {
-            table_spec: TableSpec::new("ks", "testtable"),
-            name: cql_string!("col1"),
-            column_type: ColumnType::List(Box::new(ColumnType::List(Box::new(ColumnType::Varchar)))),
-        };
-
-        let l = List::try_from(vec![Some(List::try_from(vec![Some(Varchar::try_from("a").unwrap())]).unwrap()),
-                                    Some(List::try_from(vec![Some(Varchar::try_from("b").unwrap()),
-                                                             Some(Varchar::try_from("cd").unwrap())])
-                                                 .unwrap())])
-                .unwrap();
-        let bytes = as_bytes(&l);
-        let s = display_cell(&cs.coltype(), bytes).unwrap();
-        assert_eq!(s, "[[a], [b, cd]]");
-    }
-
-    #[test]
-    fn display_nested_map() {
-        let cs = ColumnSpec::WithoutGlobalSpec {
-            table_spec: TableSpec::new("ks", "testtable"),
-            name: cql_string!("col1"),
-            column_type: ColumnType::Map(Box::new(ColumnType::Varchar),
-                                         Box::new(ColumnType::List(Box::new(ColumnType::Varchar)))),
-        };
-
-        let m = {
-            let mut map = Map::new();
-            map.insert(Varchar::try_from("a").unwrap(),
-                       Some(List::try_from(vec![Some(Varchar::try_from("1").unwrap())]).unwrap()));
-            map.insert(Varchar::try_from("b").unwrap(),
-                       Some(List::try_from(vec![Some(Varchar::try_from("1").unwrap()),
-                                                Some(Varchar::try_from("2").unwrap())])
-                                    .unwrap()));
-            map
-        };
-
-        let bytes = as_bytes(&m);
-        let s = display_cell(&cs.coltype(), bytes).unwrap();
-        assert!(s == "{a: [1], b: [1, 2]}" || s == "{b: [1, 2], a: [1]}");
-    }
 }

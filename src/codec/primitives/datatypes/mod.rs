@@ -149,13 +149,10 @@ macro_rules! display_type {
                     }
                     ColumnType::Udt(ref d) => {
                         let raw_data = RawUdt::deserialize(value)?;
-
-                        // FIXME: no clone
                         format!("{}", Udt::new(raw_data, d))
                     }
                     ColumnType::Tuple(ref d) => {
                         let raw_data = RawTuple::deserialize(value)?;
-                        // FIXME: no clone
                         format!("{}", Tuple::new(raw_data, d))
                     }
                     _ => unimplemented!()
