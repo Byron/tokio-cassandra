@@ -101,30 +101,19 @@ pub fn deserialize_bytesmut(buf: BytesMut) -> Result<(BytesMut, Option<BytesMut>
     Ok((data, bytes.as_option()))
 }
 
-macro_rules! display_type {
+macro_rules! debug_cell {
     ($($s : pat => $t : ident ), *) => {
-        pub fn display_cell(coltype: &ColumnType, value: Option<BytesMut>) -> Result<String> {
+        pub fn debug_cell(coltype: &ColumnType, value: Option<BytesMut>) -> Result<String> {
             if let Some(value) = value {
                 Ok(match *coltype {
                     $ (
-                        $s => format!("{}", $t::deserialize(value)?),
+                        $s => format!("{:?}", $t::deserialize(value)?),
                     ) *
-                    ColumnType::List(ref t) | ColumnType::Set(ref t) => {
-                        let mut s = String::new();
-                        let (data, n) = ::codec::primitives::decode::int(value)?;
-                        let mut d = data;
-
-                        write!(&mut s, "[").chain_err(|| "Cannot Write")?;
-                        for i in 1..n+1 {
-                            let (data, item) = deserialize_bytesmut(d)?;
-                            write!(&mut s, "{}", display_cell(t.deref(), item)?).chain_err(|| "Cannot Write")?;
-                            if i != n  {
-                                write!(&mut s, ", ").chain_err(|| "Cannot Write")?;
-                            }
-                            d = data;
-                        }
-                        write!(&mut s, "]").chain_err(|| "Cannot Write")?;
-                        s
+                    ColumnType::List(ref d) => {
+                        format!("{:?}", GenericList::new(RawList::deserialize(value)?, d))
+                    }
+                    ColumnType::Set(ref d) => {
+                        format!("{:?}", GenericSet::new(RawSet::deserialize(value)?, d))
                     }
                     ColumnType::Map(ref k, ref v) => {
                         let mut s = String::new();
@@ -134,10 +123,10 @@ macro_rules! display_type {
                         write!(&mut s, "{{").chain_err(|| "Cannot Write")?;
                         for i in 1..n+1 {
                             let (data, kb) = deserialize_bytesmut(d)?;
-                            write!(&mut s, "{}", display_cell(k.deref(), kb)?).chain_err(|| "Cannot Write")?;
+                            write!(&mut s, "{:?}", debug_cell(k.deref(), kb)?).chain_err(|| "Cannot Write")?;
 
                             let (data, vb) = deserialize_bytesmut(data)?;
-                            write!(&mut s, ": {}", display_cell(v.deref(), vb)?).chain_err(|| "Cannot Write")?;
+                            write!(&mut s, ": {:?}", debug_cell(v.deref(), vb)?).chain_err(|| "Cannot Write")?;
 
                             if i != n  {
                                 write!(&mut s, ", ").chain_err(|| "Cannot Write")?;
@@ -148,12 +137,10 @@ macro_rules! display_type {
                         s
                     }
                     ColumnType::Udt(ref d) => {
-                        let raw_data = RawUdt::deserialize(value)?;
-                        format!("{}", Udt::new(raw_data, d))
+                        format!("{:?}", Udt::new(RawUdt::deserialize(value)?, d))
                     }
                     ColumnType::Tuple(ref d) => {
-                        let raw_data = RawTuple::deserialize(value)?;
-                        format!("{}", Tuple::new(raw_data, d))
+                        format!("{:?}", Tuple::new(RawTuple::deserialize(value)?, d))
                     }
                     _ => unimplemented!()
                 })
@@ -164,7 +151,7 @@ macro_rules! display_type {
     }
 }
 
-display_type!(
+debug_cell!(
     ColumnType::Bigint => Bigint,
     ColumnType::Blob => Blob,
     ColumnType::Boolean => Boolean,

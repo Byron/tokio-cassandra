@@ -185,16 +185,18 @@ mod test {
 
         for (spec, bytes) in row.col_iter(&row_metadata) {
             let str = match spec.coltype() {
-                &ColumnType::Int => format!("{}", &Int::deserialize(bytes.unwrap()).unwrap()),
-                &ColumnType::Varchar => format!("{}", &Varchar::deserialize(bytes.unwrap()).unwrap()),
-                &ColumnType::Double => format!("{}", &Double::deserialize(bytes.unwrap()).unwrap()),
+                &ColumnType::Int => format!("{:?}", &Int::deserialize(bytes.unwrap()).unwrap()),
+                &ColumnType::Varchar => format!("{:?}", &Varchar::deserialize(bytes.unwrap()).unwrap()),
+                &ColumnType::Double => format!("{:?}", &Double::deserialize(bytes.unwrap()).unwrap()),
                 _ => panic!("unreachable in test"),
             };
             write!(&mut s, "{} = {}\n", spec.colname(), str).unwrap();
         }
 
-        assert_eq!("testtable.col1 = 123\ntesttable.col2 = hello world\ntesttable.col3 = 1.243\n",
+        assert_eq!("testtable.col1 = 123\ntesttable.col2 = \"hello world\"\ntesttable.col3 = 1.243\n",
                    s);
     }
+
+
     //                TODO: Test for Errorcase
 }

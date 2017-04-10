@@ -1,8 +1,8 @@
 use super::*;
-use std::fmt::Display;
+use std::fmt::Debug;
 
 // Bounds checking needs to be done in constructor
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Ascii {
     inner: BytesMut,
 }
@@ -37,17 +37,18 @@ impl CqlSerializable for Ascii {
     }
 }
 
-impl Display for Ascii {
+impl Debug for Ascii {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        fmt.write_char('"')?;
         for c in &self.inner {
             fmt.write_char(c as char)?;
         }
-        Ok(())
+        fmt.write_char('"')
     }
 }
 
 // Bounds-Checking in Constructor
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Text {
     inner: String,
 }
@@ -78,9 +79,9 @@ impl CqlSerializable for Text {
 
 pub type Varchar = Text;
 
-impl Display for Text {
+impl Debug for Text {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        Display::fmt(&self.inner, fmt)
+        Debug::fmt(&self.inner, fmt)
     }
 }
 
@@ -89,20 +90,20 @@ mod test {
     use super::*;
 
     #[test]
-    fn ascii_display() {
+    fn ascii_debug() {
         let x = Ascii::try_from(vec![0x32, 0x33, 0x34]).unwrap();
-        assert_eq!("234", format!("{}", x))
+        assert_eq!("\"234\"", format!("{:?}", x))
     }
 
     #[test]
-    fn text_display() {
+    fn text_debug() {
         let x = Text::try_from("abc123").unwrap();
-        assert_eq!("abc123", format!("{}", x))
+        assert_eq!("\"abc123\"", format!("{:?}", x))
     }
 
     #[test]
-    fn varchar_display() {
+    fn varchar_debug() {
         let x = Varchar::try_from("abc123").unwrap();
-        assert_eq!("abc123", format!("{}", x))
+        assert_eq!("\"abc123\"", format!("{:?}", x))
     }
 }

@@ -1,9 +1,9 @@
 use super::*;
-use std::fmt::Display;
+use std::fmt::Debug;
 use bytes::BufMut;
 use byteorder::ByteOrder;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Bigint {
     inner: i64,
 }
@@ -33,13 +33,13 @@ impl CqlSerializable for Bigint {
     }
 }
 
-impl Display for Bigint {
+impl Debug for Bigint {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        Display::fmt(&self.inner, fmt)
+        self.inner.fmt(fmt)
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Varint {
     inner: BytesMut,
 }
@@ -68,7 +68,7 @@ impl CqlSerializable for Varint {
     }
 }
 
-impl Display for Varint {
+impl Debug for Varint {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         use num_bigint::{Sign, BigInt};
         let bytes = self.inner.as_ref();
@@ -82,11 +82,29 @@ impl Display for Varint {
             }
         };
 
-        Display::fmt(&bint, fmt)
+        ::std::fmt::Display::fmt(&bint, fmt)
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+impl ::std::fmt::Display for Varint {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        use num_bigint::{Sign, BigInt};
+        let bytes = self.inner.as_ref();
+
+        let bint = {
+            if bytes[0] & 0x80 == 0x80 {
+                let v: Vec<u8> = Vec::from(bytes).into_iter().map(|x| !x).collect();
+                BigInt::from_bytes_be(Sign::Minus, &v[..]) - BigInt::from(1)
+            } else {
+                BigInt::from_bytes_be(Sign::Plus, bytes)
+            }
+        };
+
+        ::std::fmt::Display::fmt(&bint, fmt)
+    }
+}
+
+#[derive(PartialEq, Clone)]
 pub struct Double {
     inner: f64,
 }
@@ -97,9 +115,9 @@ impl Double {
     }
 }
 
-impl Display for Double {
+impl Debug for Double {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        Display::fmt(&self.inner, fmt)
+        self.inner.fmt(fmt)
     }
 }
 
@@ -123,7 +141,7 @@ impl CqlSerializable for Double {
 }
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Float {
     inner: f32,
 }
@@ -134,9 +152,9 @@ impl Float {
     }
 }
 
-impl Display for Float {
+impl Debug for Float {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        Display::fmt(&self.inner, fmt)
+        self.inner.fmt(fmt)
     }
 }
 
@@ -159,14 +177,14 @@ impl CqlSerializable for Float {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Int {
     inner: i32,
 }
 
-impl Display for Int {
+impl Debug for Int {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        Display::fmt(&self.inner, fmt)
+        self.inner.fmt(fmt)
     }
 }
 
@@ -195,7 +213,7 @@ impl CqlSerializable for Int {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Decimal {
     scale: i32,
     unscaled: Varint,
@@ -230,9 +248,9 @@ impl CqlSerializable for Decimal {
     }
 }
 
-impl Display for Decimal {
+impl Debug for Decimal {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        let unscaled = format!("{}", self.unscaled);
+        let unscaled = format!("{:?}", self.unscaled);
         let n = self.scale + 1;
         let n = n - unscaled.len() as i32;
         if n > 0 {
@@ -259,44 +277,44 @@ mod test {
     use super::*;
 
     #[test]
-    fn bigint_display() {
+    fn bigint_debug() {
         let x = Bigint::new(-123);
-        assert_eq!("-123", format!("{}", x));
+        assert_eq!("-123", format!("{:?}", x));
     }
 
     #[test]
-    fn varint_display() {
+    fn varint_debug() {
         let x = Varint::try_from(vec![0x00, 0x02]).unwrap();
-        assert_eq!("2", format!("{}", x));
+        assert_eq!("2", format!("{:?}", x));
     }
 
     #[test]
-    fn float_display() {
+    fn float_debug() {
         let x = Float::new(-1.23);
-        assert_eq!("-1.23", format!("{}", x));
+        assert_eq!("-1.23", format!("{:?}", x));
     }
 
     #[test]
-    fn double_display() {
+    fn double_debug() {
         let x = Double::new(-1.23);
-        assert_eq!("-1.23", format!("{}", x));
+        assert_eq!("-1.23", format!("{:?}", x));
     }
 
     #[test]
-    fn int_display() {
+    fn int_debug() {
         let x = Int::new(-123);
-        assert_eq!("-123", format!("{}", x));
+        assert_eq!("-123", format!("{:?}", x));
     }
 
     #[test]
-    fn decimal_display() {
+    fn decimal_debug() {
         let x = Decimal::new(2, Varint::try_from(vec![0x09]).unwrap());
-        assert_eq!("0.009", format!("{}", x));
+        assert_eq!("0.009", format!("{:?}", x));
 
         let x = Decimal::new(0, Varint::try_from(vec![0x09]).unwrap());
-        assert_eq!("9", format!("{}", x));
+        assert_eq!("9", format!("{:?}", x));
 
         let x = Decimal::new(2, Varint::try_from(vec![0x05, 0x09]).unwrap());
-        assert_eq!("12.89", format!("{}", x));
+        assert_eq!("12.89", format!("{:?}", x));
     }
 }

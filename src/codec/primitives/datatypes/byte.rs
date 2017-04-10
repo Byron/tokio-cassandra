@@ -1,8 +1,8 @@
 use super::*;
-use std::fmt::Display;
+use std::fmt::Debug;
 
 // Bounds checking needs to be done in constructor
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Blob {
     inner: BytesMut,
 }
@@ -31,9 +31,9 @@ impl CqlSerializable for Blob {
     }
 }
 
-impl Display for Blob {
+impl Debug for Blob {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        fmt.write_str("[BLOB]")
+        self.inner.fmt(fmt)
     }
 }
 
@@ -44,6 +44,6 @@ mod test {
     #[test]
     fn blob_display() {
         let x = Blob::try_from(vec![0x01, 0x02]).unwrap();
-        assert_eq!("[BLOB]", format!("{}", x));
+        assert_eq!("[1, 2]", format!("{:?}", x));
     }
 }

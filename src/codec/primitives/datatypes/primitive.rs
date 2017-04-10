@@ -1,8 +1,8 @@
 use super::*;
-use std::fmt::Display;
+use std::fmt::Debug;
 use bytes::BufMut;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Boolean {
     inner: bool,
 }
@@ -36,7 +36,7 @@ impl CqlSerializable for Boolean {
     }
 }
 
-impl Display for Boolean {
+impl Debug for Boolean {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         if self.inner {
             fmt.write_str("true")
@@ -48,13 +48,11 @@ impl Display for Boolean {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
 
     #[test]
-    fn boolean_display() {
-        assert_eq!("true", format!("{}", Boolean::new(true)));
-        assert_eq!("false", format!("{}", Boolean::new(false)));
+    fn boolean_debug() {
+        assert_eq!("true", format!("{:?}", Boolean::new(true)));
+        assert_eq!("false", format!("{:?}", Boolean::new(false)));
     }
-
 }

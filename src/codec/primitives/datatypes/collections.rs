@@ -1,10 +1,10 @@
 use super::*;
-use std::fmt::Display;
+use std::fmt::Debug;
 use codec::response::{TupleDefinition, UdtDefinition, UdtField};
 use codec::primitives::{CqlFrom, CqlString};
 
 // Bounds checking needs to be done in constructor
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct List<T: CqlSerializable> {
     inner: Vec<Option<T>>,
 }
@@ -47,7 +47,7 @@ impl<T: CqlSerializable> CqlSerializable for List<T> {
     }
 }
 
-impl<T: CqlSerializable + Display> Display for List<T> {
+impl<T: CqlSerializable + Debug> Debug for List<T> {
     // TODO: maybe room for optimization
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
 
@@ -71,7 +71,7 @@ impl<T: CqlSerializable + Display> Display for List<T> {
 }
 
 // Bounds checking needs to be done in constructor
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq)]
 pub struct Map<K, V>
     where K: CqlSerializable,
           V: CqlSerializable
@@ -82,9 +82,9 @@ pub struct Map<K, V>
     p: PhantomData<K>,
 }
 
-impl<K, V> Display for Map<K, V>
-    where V: CqlSerializable + Display,
-          K: CqlSerializable + Display
+impl<K, V> Debug for Map<K, V>
+    where V: CqlSerializable + Debug,
+          K: CqlSerializable + Debug
 {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
         for (key, value) in &self.inner {
@@ -166,7 +166,7 @@ impl<K, V> CqlSerializable for Map<K, V>
 }
 
 // Bounds checking needs to be done in constructor
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq)]
 pub struct Set<V>
     where V: CqlSerializable
 {
@@ -174,8 +174,8 @@ pub struct Set<V>
     p: PhantomData<V>,
 }
 
-impl<V> Display for Set<V>
-    where V: CqlSerializable + Display
+impl<V> Debug for Set<V>
+    where V: CqlSerializable + Debug
 {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
         fmt.write_char('{')?;
@@ -245,7 +245,7 @@ impl<V> CqlSerializable for Set<V>
 }
 
 // Bounds checking needs to be done in constructor
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct BytesMutCollection {
     inner: Vec<Option<BytesMut>>,
 }
@@ -289,6 +289,8 @@ impl TryFrom<Vec<Option<BytesMut>>> for BytesMutCollection {
 
 pub type RawTuple = BytesMutCollection;
 pub type RawUdt = BytesMutCollection;
+pub type RawList = BytesMutCollection;
+pub type RawSet = BytesMutCollection;
 
 pub struct Udt<'a> {
     inner: RawUdt,
@@ -304,7 +306,7 @@ impl<'a> Udt<'a> {
     }
 }
 
-impl<'a> Display for Udt<'a> {
+impl<'a> Debug for Udt<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
         let field_len = self.def.fields.len();
         if self.inner.inner.len() != field_len {
@@ -319,7 +321,7 @@ impl<'a> Display for Udt<'a> {
             // FIXME: clone() needed?
             fmt.write_str(&t.0.as_ref())?;
             fmt.write_str(": ")?;
-            fmt.write_str(&super::display_cell(&t.1, bytes.clone())
+            fmt.write_str(&super::debug_cell(&t.1, bytes.clone())
                                 .map_err(|_| ::std::fmt::Error)?)?;
             i += 1;
 
@@ -345,7 +347,7 @@ impl<'a> Tuple<'a> {
     }
 }
 
-impl<'a> Display for Tuple<'a> {
+impl<'a> Debug for Tuple<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
         let field_len = self.def.0.len();
         if self.inner.inner.len() != field_len {
@@ -357,7 +359,7 @@ impl<'a> Display for Tuple<'a> {
         for bytes in &self.inner.inner {
             let t = &self.def.0[i];
             // FIXME: clone() needed?
-            fmt.write_str(&super::display_cell(t, bytes.clone())
+            fmt.write_str(&super::debug_cell(t, bytes.clone())
                                 .map_err(|_| ::std::fmt::Error)?)?;
             i += 1;
 
@@ -369,18 +371,54 @@ impl<'a> Display for Tuple<'a> {
     }
 }
 
+pub struct GenericList<'a> {
+    inner: RawList,
+    def: &'a ColumnType,
+}
+
+impl<'a> GenericList<'a> {
+    pub fn new(inner: RawList, def: &'a ColumnType) -> Self {
+        GenericList {
+            inner: inner,
+            def: def,
+        }
+    }
+}
+
+impl<'a> Debug for GenericList<'a> {
+    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        let field_len = self.inner.inner.len();
+        fmt.write_char('[')?;
+
+        let mut i = 0;
+        for bytes in &self.inner.inner {
+            // FIXME: clone() needed?
+            fmt.write_str(&super::debug_cell(self.def, bytes.clone())
+                                .map_err(|_| ::std::fmt::Error)?)?;
+            i += 1;
+
+            if i != field_len {
+                fmt.write_str(", ")?;
+            }
+        }
+        fmt.write_char(']')
+    }
+}
+
+pub type GenericSet<'a> = GenericList<'a>;
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    fn list_display() {
+    fn list_debug() {
         let x = List::try_from(vec![Some(Boolean::new(false)), Some(Boolean::new(true)), None]).unwrap();
-        assert_eq!("{false, true, NULL}", format!("{}", x));
+        assert_eq!("{false, true, NULL}", format!("{:?}", x));
     }
 
     #[test]
-    fn udt_display() {
+    fn udt_debug() {
         let udt = RawUdt::try_from(vec![Some(vec![0x66, 0x67, 0x68].into()),
                                         None,
                                         Some(vec![0x00, 0x00, 0x00, 0x50].into())])
@@ -393,19 +431,20 @@ mod test {
                          UdtField(cql_string!("sales"), ColumnType::Int)],
         };
 
-        assert_eq!("{eid: fgh, name: NULL, sales: 80}",
-                   format!("{}", Udt::new(udt, &def)));
+        assert_eq!("{eid: \"fgh\", name: NULL, sales: 80}",
+                   format!("{:?}", Udt::new(udt, &def)));
     }
 
     #[test]
-    fn tuple_display() {
+    fn tuple_debug() {
         let udt = RawTuple::try_from(vec![Some(vec![0x66, 0x67, 0x68].into()),
                                           None,
                                           Some(vec![0x00, 0x00, 0x00, 0x50].into())])
                 .unwrap();
         let def = TupleDefinition(vec![ColumnType::Varchar, ColumnType::Varchar, ColumnType::Int]);
 
-        assert_eq!("(fgh, NULL, 80)", format!("{}", Tuple::new(udt, &def)));
+        assert_eq!("(\"fgh\", NULL, 80)",
+                   format!("{:?}", Tuple::new(udt, &def)));
     }
 
     //    TODO: display test for others

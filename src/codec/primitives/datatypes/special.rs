@@ -1,9 +1,9 @@
 use super::*;
-use std::fmt::Display;
+use std::fmt::Debug;
 use bytes::BufMut;
 use byteorder::ByteOrder;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum Inet {
     Ipv4(Ipv4Addr),
     Ipv6(Ipv6Addr),
@@ -44,7 +44,7 @@ impl CqlSerializable for Inet {
     }
 }
 
-impl Display for Inet {
+impl Debug for Inet {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
             Inet::Ipv4(i) => ::std::fmt::Display::fmt(&i, fmt),
@@ -53,7 +53,7 @@ impl Display for Inet {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Timestamp {
     epoch: i64,
 }
@@ -83,14 +83,14 @@ impl CqlSerializable for Timestamp {
     }
 }
 
-impl Display for Timestamp {
+impl Debug for Timestamp {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         let naive = ::chrono::naive::datetime::NaiveDateTime::from_timestamp(self.epoch, 0);
         ::std::fmt::Display::fmt(&naive, fmt)
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Uuid {
     inner: [u8; 16],
 }
@@ -121,7 +121,7 @@ impl CqlSerializable for Uuid {
     }
 }
 
-impl Display for Uuid {
+impl Debug for Uuid {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         let s = format!("{:02X}{:02X}{:02X}{:02X}-{:02X}{:02X}-{:02X}{:02X}\
                         -{:02X}{:02X}-{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}",
@@ -152,32 +152,34 @@ mod test {
     use super::*;
 
     #[test]
-    fn inet4_display() {
+    fn inet4_debug() {
         let iv4 = Inet::Ipv4(Ipv4Addr::new(127, 0, 0, 1));
-        assert_eq!("127.0.0.1", format!("{}", iv4));
+        assert_eq!("127.0.0.1", format!("{:?}", iv4));
     }
 
     #[test]
-    fn inet6_display() {
+    fn inet6_debug() {
         let iv6 = Inet::Ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff));
-        assert_eq!("::ffff:192.10.2.255", format!("{}", iv6));
+        assert_eq!("::ffff:192.10.2.255", format!("{:?}", iv6));
     }
 
     #[test]
-    fn timestamp_display() {
+    fn timestamp_debug() {
         let timestamp = Timestamp::new(1491283495);
-        assert_eq!("2017-04-04 05:24:55", format!("{}", timestamp));
+        assert_eq!("2017-04-04 05:24:55", format!("{:?}", timestamp));
     }
 
     #[test]
-    fn uuid_display() {
+    fn uuid_debug() {
         let uuid = Uuid::new([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        assert_eq!("00010203-0405-0607-0809-0A0B0C0D0E0F", format!("{}", uuid));
+        assert_eq!("00010203-0405-0607-0809-0A0B0C0D0E0F",
+                   format!("{:?}", uuid));
     }
 
     #[test]
-    fn timeuuid_display() {
+    fn timeuuid_debug() {
         let uuid = TimeUuid::new([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        assert_eq!("00010203-0405-0607-0809-0A0B0C0D0E0F", format!("{}", uuid));
+        assert_eq!("00010203-0405-0607-0809-0A0B0C0D0E0F",
+                   format!("{:?}", uuid));
     }
 }
