@@ -86,7 +86,8 @@ fn setup_connector(mut connector: SslConnectorBuilder,
                     contents,
                     passphrase,
                 }) = tls.credentials {
-        Pkcs12::from_der(&contents).and_then(|p| p.parse(&passphrase))
+        Pkcs12::from_der(&contents)
+            .and_then(|p| p.parse(&passphrase))
             .and_then(|identity| {
                 let builder = connector.builder_mut();
                 builder
@@ -108,7 +109,8 @@ fn setup_connector(mut connector: SslConnectorBuilder,
             .map_err(io_err)?;
     }
     if let Some(fp) = tls.certificate_authority_file {
-        connector.builder_mut()
+        connector
+            .builder_mut()
             .set_ca_file(&fp)
             .map_err(|e| {
                          format!("Failed to use certificate-authority file at '{}' with error: {}",

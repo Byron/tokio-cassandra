@@ -120,13 +120,13 @@ pub struct TupleDefinition(Vec<ColumnType>);
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UdtDefinition {
-    keyspace: CqlString,
-    name: CqlString,
-    fields: Vec<UdtField>,
+    pub keyspace: CqlString,
+    pub name: CqlString,
+    pub fields: Vec<UdtField>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct UdtField(CqlString, ColumnType);
+pub struct UdtField(pub CqlString, pub ColumnType);
 
 impl ColumnType {
     pub fn decode(buf: BytesMut) -> decode::ParseResult<Option<ColumnType>> {

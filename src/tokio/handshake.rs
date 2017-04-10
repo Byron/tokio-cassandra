@@ -78,12 +78,14 @@ fn startup_message_from_supported(msg: response::SupportedMessage,
 fn auth_response_from_authenticate(creds: Option<Credentials>,
                                    msg: response::AuthenticateMessage)
                                    -> Result<request::Message> {
-    let creds = creds.ok_or(ErrorKind::HandshakeError(format!("No credentials provided but\
+    let creds = creds
+        .ok_or(ErrorKind::HandshakeError(format!("No credentials provided but\
                                                         server requires authentication \
                                                       by {}",
                                                  msg.authenticator.as_ref())))?;
 
-    let authenticator = Authenticator::from_name(msg.authenticator.as_ref(), creds).chain_err(|| "Authenticator Err")?;
+    let authenticator = Authenticator::from_name(msg.authenticator.as_ref(), creds)
+        .chain_err(|| "Authenticator Err")?;
 
     let mut buf = BytesMut::with_capacity(128);
     authenticator.encode_auth_response(&mut buf);

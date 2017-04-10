@@ -1,5 +1,7 @@
 use super::*;
 use std::fmt::Display;
+use codec::response::{TupleDefinition, UdtDefinition, UdtField};
+use codec::primitives::{CqlFrom, CqlString};
 
 // Bounds checking needs to be done in constructor
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -285,28 +287,95 @@ impl TryFrom<Vec<Option<BytesMut>>> for BytesMutCollection {
     }
 }
 
-impl Display for BytesMutCollection {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        fmt.write_str("BytesMutCollection")
+pub type RawTuple = BytesMutCollection;
+pub type RawUdt = BytesMutCollection;
+
+pub struct Udt<'a> {
+    inner: RawUdt,
+    def: &'a UdtDefinition,
+}
+
+impl<'a> Udt<'a> {
+    pub fn new(inner: RawUdt, def: &'a UdtDefinition) -> Self {
+        Udt {
+            inner: inner,
+            def: def,
+        }
     }
 }
 
-pub type Tuple = BytesMutCollection;
-pub type Udt = BytesMutCollection;
+impl<'a> Display for Udt<'a> {
+    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        let field_len = self.def.fields.len();
+        if self.inner.inner.len() != field_len {
+            panic!("Inner data fields do not fit to the number of field definitions");
+        }
 
-// TODO: just an idea
-//pub type RawList = BytesMutCollection;
-//pub type RawSet = BytesMutCollection;
+        fmt.write_char('{')?;
+
+        let mut i = 0;
+        for bytes in &self.inner.inner {
+            let t = &self.def.fields[i];
+            // FIXME: no unwrap and clone()
+            fmt.write_str(&t.0.as_ref())?;
+            fmt.write_str(": ")?;
+            fmt.write_str(&super::display_cell(&t.1, bytes.clone()).unwrap())?;
+            i += 1;
+
+            if i != field_len {
+                fmt.write_str(", ")?;
+            }
+        }
+        fmt.write_char('}')
+    }
+}
+
+pub struct Tuple<'a> {
+    inner: RawTuple,
+    def: &'a TupleDefinition,
+}
+
+impl<'a> Tuple<'a> {
+    pub fn new(inner: RawTuple, def: &'a TupleDefinition) -> Self {
+        Tuple {
+            inner: inner,
+            def: def,
+        }
+    }
+}
+
+impl<'a> Display for Tuple<'a> {
+    fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
+        unimplemented!()
+    }
+}
 
 #[cfg(test)]
 mod test {
-
     use super::*;
 
     #[test]
     fn list_display() {
         let x = List::try_from(vec![Some(Boolean::new(false)), Some(Boolean::new(true)), None]).unwrap();
         assert_eq!("{false, true, NULL}", format!("{}", x));
+    }
+
+    #[test]
+    fn udt_display() {
+        let udt = RawUdt::try_from(vec![Some(vec![0x66, 0x67, 0x68].into()),
+                                        None,
+                                        Some(vec![0x00, 0x00, 0x00, 0x50].into())])
+                .unwrap();
+        let def = UdtDefinition {
+            keyspace: cql_string!("ks"),
+            name: cql_string!("table1"),
+            fields: vec![UdtField(cql_string!("eid"), ColumnType::Varchar),
+                         UdtField(cql_string!("name"), ColumnType::Varchar),
+                         UdtField(cql_string!("sales"), ColumnType::Int)],
+        };
+
+        assert_eq!("{eid: fgh, name: NULL, sales: 80}",
+                   format!("{}", Udt::new(udt, &def)));
     }
 
     //    TODO: display test for others

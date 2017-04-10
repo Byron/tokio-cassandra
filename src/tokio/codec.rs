@@ -103,8 +103,8 @@ impl Decoder for CqlCodec {
                 if src.len() < Header::encoded_len() {
                     return Ok(None);
                 }
-                let h = Header::try_from(src.split_to(Header::encoded_len()).as_ref()
-                            ).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+                let h = Header::try_from(src.split_to(Header::encoded_len()).as_ref())
+                    .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
                 assert!(h.version.direction == Direction::Response,
                         "As a client protocol, I can only handle response decoding");
                 let len = h.length;

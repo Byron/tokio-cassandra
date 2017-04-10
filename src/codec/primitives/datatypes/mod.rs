@@ -147,8 +147,17 @@ macro_rules! display_type {
                         write!(&mut s, "}}").chain_err(|| "Cannot Write")?;
                         s
                     }
-//TODO:
-// Udt, Tuple
+                    ColumnType::Udt(ref d) => {
+                        let raw_data = RawUdt::deserialize(value)?;
+
+                        // FIXME: no clone
+                        format!("{}", Udt::new(raw_data, d))
+                    }
+                    ColumnType::Tuple(ref d) => {
+                        let raw_data = RawTuple::deserialize(value)?;
+                        // FIXME: no clone
+                        format!("{}", Tuple::new(raw_data, d))
+                    }
                     _ => unimplemented!()
                 })
             } else {
@@ -162,8 +171,6 @@ display_type!(
     ColumnType::Bigint => Bigint,
     ColumnType::Blob => Blob,
     ColumnType::Boolean => Boolean,
-    ColumnType::Tuple(_) => Tuple,
-    ColumnType::Udt(_) => Udt,
     ColumnType::Timestamp => Timestamp,
     ColumnType::Uuid => Uuid,
     ColumnType::Timeuuid => TimeUuid,
@@ -360,16 +367,20 @@ mod test_encode_decode {
     }
 
     #[test]
-    fn tuple() {
-        let to_encode = Tuple::try_from(vec![Some(vec![0x00, 0x80].into()), None, Some(vec![0x00, 0x80].into())])
-            .unwrap();
+    fn raw_tuple() {
+        let to_encode = RawTuple::try_from(vec![Some(vec![0x00, 0x80].into()),
+                                                None,
+                                                Some(vec![0x00, 0x80].into())])
+                .unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
     #[test]
-    fn udt() {
-        let to_encode = Udt::try_from(vec![Some(vec![0x00, 0x80].into()), None, Some(vec![0x00, 0x80].into())])
-            .unwrap();
+    fn raw_udt() {
+        let to_encode = RawUdt::try_from(vec![Some(vec![0x00, 0x80].into()),
+                                              None,
+                                              Some(vec![0x00, 0x80].into())])
+                .unwrap();
         assert_serialization_deserialization(to_encode);
     }
 }

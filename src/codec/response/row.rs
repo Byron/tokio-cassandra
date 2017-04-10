@@ -95,7 +95,7 @@ mod test {
     use codec::primitives::datatypes::*;
     use codec::primitives::{CqlFrom, CqlString};
     use bytes::BytesMut;
-    use super::super::{ColumnSpec, RowsMetadata, ColumnType, TableSpec};
+    use super::super::{ColumnSpec, RowsMetadata, ColumnType, TableSpec, UdtDefinition, UdtField};
     use std::fmt::Write;
 
     fn as_bytes<T: CqlSerializable>(data: &T) -> Option<BytesMut> {
@@ -145,7 +145,11 @@ mod test {
             c: Text::try_from("foo").unwrap(),
         };
 
-        let row = Row { raw_cols: vec![as_bytes(&Int::new(123)), None, as_bytes(&Text::try_from("foo").unwrap())] };
+        let row = Row {
+            raw_cols: vec![as_bytes(&Int::new(123)),
+                           None,
+                           as_bytes(&Text::try_from("foo").unwrap())],
+        };
 
         let to = TestStruct {
             a: row.value_at(0).unwrap(),
@@ -241,4 +245,29 @@ mod test {
         let s = display_cell(&cs.coltype(), bytes).unwrap();
         assert!(s == "{a: [1], b: [1, 2]}" || s == "{b: [1, 2], a: [1]}");
     }
+
+    //    #[test]
+    //    fn display_udt() {
+    //        let cs = ColumnSpec::WithoutGlobalSpec {
+    //            table_spec: TableSpec::new("ks", "testtable"),
+    //            name: cql_string!("col1"),
+    //            column_type: ColumnType::Udt(UdtDefinition {
+    //                                             keyspace: cql_string!("ks"),
+    //                                             name: cql_string!("table1"),
+    //                                             fields: vec![UdtField(cql_string!("eid"), ColumnType::Varchar),
+    //                                                          UdtField(cql_string!("name"), ColumnType::Varchar),
+    //                                                          UdtField(cql_string!("sales"), ColumnType::Int)],
+    //                                         }),
+    //        };
+    //
+    //
+    //        let udt = RawUdt::try_from(vec![Some(vec![0x02, 0x66, 0x67].into()),
+    //                                        None,
+    //                                        Some(vec![0x00, 0x50].into())])
+    //                .unwrap();
+    //
+    //        let bytes = as_bytes(&udt);
+    //        let s = display_cell(&cs.coltype(), bytes).unwrap();
+    //        assert_eq!(s, "{a: [1], b: [1, 2]}");
+    //    }
 }
