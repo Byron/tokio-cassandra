@@ -1,4 +1,4 @@
-use codec::primitives::datatypes::{self, CqlSerializable};
+use codec::primitives::datatypes::CqlSerializable;
 use codec::primitives::decode;
 use bytes::BytesMut;
 use codec::response::ColumnSpec;

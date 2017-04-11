@@ -103,49 +103,37 @@ pub fn deserialize_bytesmut(buf: BytesMut) -> Result<(BytesMut, Option<BytesMut>
 
 macro_rules! debug_cell {
     ($($s : pat => $t : ident ), *) => {
-        pub fn debug_cell(coltype: &ColumnType, value: Option<BytesMut>) -> Result<String> {
+        pub fn debug_cell(coltype: &ColumnType, value: Option<BytesMut>,
+                              fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            use std::fmt::Debug;
             if let Some(value) = value {
-                Ok(match *coltype {
+                match *coltype {
                     $ (
-                        $s => format!("{:?}", $t::deserialize(value)?),
+                        $s => Debug::fmt(&$t::deserialize(value).map_err(|_| ::std::fmt::Error)?, fmt),
                     ) *
                     ColumnType::List(ref d) => {
-                        format!("{:?}", GenericList::new(RawList::deserialize(value)?, d))
+                        Debug::fmt(&GenericList::new(RawList::deserialize(value)
+                            .map_err(|_| ::std::fmt::Error)?, d), fmt)
                     }
                     ColumnType::Set(ref d) => {
-                        format!("{:?}", GenericSet::new(RawSet::deserialize(value)?, d))
+                        Debug::fmt(&GenericSet::new(RawSet::deserialize(value)
+                            .map_err(|_| ::std::fmt::Error)?, d), fmt)
                     }
                     ColumnType::Map(ref k, ref v) => {
-                        let mut s = String::new();
-                        let (data, n) = ::codec::primitives::decode::int(value)?;
-                        let mut d = data;
-
-                        write!(&mut s, "{{").chain_err(|| "Cannot Write")?;
-                        for i in 1..n+1 {
-                            let (data, kb) = deserialize_bytesmut(d)?;
-                            write!(&mut s, "{:?}", debug_cell(k.deref(), kb)?).chain_err(|| "Cannot Write")?;
-
-                            let (data, vb) = deserialize_bytesmut(data)?;
-                            write!(&mut s, ": {:?}", debug_cell(v.deref(), vb)?).chain_err(|| "Cannot Write")?;
-
-                            if i != n  {
-                                write!(&mut s, ", ").chain_err(|| "Cannot Write")?;
-                            }
-                            d = data
-                        }
-                        write!(&mut s, "}}").chain_err(|| "Cannot Write")?;
-                        s
+                        Debug::fmt(&GenericMap::new(RawMap::deserialize(value)
+                            .map_err(|_| ::std::fmt::Error)?, k, v), fmt)
                     }
                     ColumnType::Udt(ref d) => {
-                        format!("{:?}", Udt::new(RawUdt::deserialize(value)?, d))
+                        Debug::fmt(&Udt::new(RawUdt::deserialize(value)
+                            .map_err(|_| ::std::fmt::Error)?, d), fmt)
                     }
                     ColumnType::Tuple(ref d) => {
-                        format!("{:?}", Tuple::new(RawTuple::deserialize(value)?, d))
+                        Debug::fmt(&Tuple::new(RawTuple::deserialize(value)
+                            .map_err(|_| ::std::fmt::Error)?, d), fmt)
                     }
-                    _ => unimplemented!()
-                })
+                }
             } else {
-                Ok(format!("NULL"))
+                fmt.write_str("NULL")
             }
         }
     }
@@ -154,6 +142,8 @@ macro_rules! debug_cell {
 debug_cell!(
     ColumnType::Bigint => Bigint,
     ColumnType::Blob => Blob,
+    ColumnType::Custom(_) => Blob,
+    ColumnType::Counter => Bigint,
     ColumnType::Boolean => Boolean,
     ColumnType::Timestamp => Timestamp,
     ColumnType::Uuid => Uuid,

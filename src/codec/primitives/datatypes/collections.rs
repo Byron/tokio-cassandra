@@ -224,11 +224,9 @@ impl<'a> Debug for GenericMap<'a> {
         let mut i = 0;
         for &(ref k, ref v) in &self.inner.inner {
             // FIXME: clone() needed?
-            fmt.write_str(&super::debug_cell(self.key_type, k.clone())
-                                .map_err(|_| ::std::fmt::Error)?)?;
+            super::debug_cell(self.key_type, k.clone(), fmt)?;
             fmt.write_str(": ")?;
-            fmt.write_str(&super::debug_cell(self.value_type, v.clone())
-                                .map_err(|_| ::std::fmt::Error)?)?;
+            super::debug_cell(self.value_type, v.clone(), fmt)?;
 
             i += 1;
             if i != field_len {
@@ -395,8 +393,7 @@ impl<'a> Debug for Udt<'a> {
             // FIXME: clone() needed?
             fmt.write_str(&t.0.as_ref())?;
             fmt.write_str(": ")?;
-            fmt.write_str(&super::debug_cell(&t.1, bytes.clone())
-                                .map_err(|_| ::std::fmt::Error)?)?;
+            super::debug_cell(&t.1, bytes.clone(), fmt)?;
             i += 1;
 
             if i != field_len {
@@ -433,8 +430,7 @@ impl<'a> Debug for Tuple<'a> {
         for bytes in &self.inner.inner {
             let t = &self.def.0[i];
             // FIXME: clone() needed?
-            fmt.write_str(&super::debug_cell(t, bytes.clone())
-                                .map_err(|_| ::std::fmt::Error)?)?;
+            super::debug_cell(t, bytes.clone(), fmt)?;
             i += 1;
 
             if i != field_len {
@@ -467,8 +463,7 @@ impl<'a> Debug for GenericList<'a> {
         let mut i = 0;
         for bytes in &self.inner.inner {
             // FIXME: clone() needed?
-            fmt.write_str(&super::debug_cell(self.def, bytes.clone())
-                                .map_err(|_| ::std::fmt::Error)?)?;
+            super::debug_cell(self.def, bytes.clone(), fmt)?;
             i += 1;
 
             if i != field_len {
