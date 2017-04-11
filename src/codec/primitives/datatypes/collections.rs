@@ -165,6 +165,80 @@ impl<K, V> CqlSerializable for Map<K, V>
     }
 }
 
+#[derive(PartialEq, Eq)]
+pub struct RawMap {
+    inner: Vec<(Option<BytesMut>, Option<BytesMut>)>,
+}
+
+
+impl CqlSerializable for RawMap {
+    fn serialize(&self, buf: &mut BytesMut) {
+        ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
+
+        for &(ref k, ref v) in &self.inner {
+            serialize_bytesmut(k, buf);
+            serialize_bytesmut(v, buf);
+        }
+    }
+
+    fn deserialize(data: BytesMut) -> Result<Self> {
+        let (data, n) = ::codec::primitives::decode::int(data)?;
+        let mut vec = Vec::new();
+        let mut d = data;
+        for _ in 0..n {
+            let (data, k) = deserialize_bytesmut(d)?;
+            let (data, v) = deserialize_bytesmut(data)?;
+
+            vec.push((k, v));
+            d = data;
+        }
+        Ok(RawMap { inner: vec })
+    }
+
+    fn bytes_len(&self) -> Option<BytesLen> {
+        Some(self.inner.len() as BytesLen)
+    }
+}
+
+pub struct GenericMap<'a> {
+    inner: RawMap,
+    key_type: &'a ColumnType,
+    value_type: &'a ColumnType,
+}
+
+impl<'a> GenericMap<'a> {
+    pub fn new(inner: RawMap, key_type: &'a ColumnType, value_type: &'a ColumnType) -> Self {
+        GenericMap {
+            inner: inner,
+            key_type: key_type,
+            value_type: value_type,
+        }
+    }
+}
+
+impl<'a> Debug for GenericMap<'a> {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        let field_len = self.inner.inner.len();
+        fmt.write_char('{')?;
+
+        let mut i = 0;
+        for &(ref k, ref v) in &self.inner.inner {
+            // FIXME: clone() needed?
+            fmt.write_str(&super::debug_cell(self.key_type, k.clone())
+                                .map_err(|_| ::std::fmt::Error)?)?;
+            fmt.write_str(": ")?;
+            fmt.write_str(&super::debug_cell(self.value_type, v.clone())
+                                .map_err(|_| ::std::fmt::Error)?)?;
+
+            i += 1;
+            if i != field_len {
+                fmt.write_str(", ")?;
+            }
+        }
+        fmt.write_char('}')
+    }
+}
+
 // Bounds checking needs to be done in constructor
 #[derive(PartialEq, Eq)]
 pub struct Set<V>
@@ -447,6 +521,17 @@ mod test {
                    format!("{:?}", Tuple::new(udt, &def)));
     }
 
-    //    TODO: display test for others
+    #[test]
+    fn genericmap_debug() {
+        let rm = RawMap {
+            inner: vec![(Some(vec![0x00, 0x00, 0x00, 0x01].into()), Some(vec![0x66, 0x67].into())),
+                        (Some(vec![0x00, 0x00, 0x00, 0x02].into()), Some(vec![0x68, 0x69].into())),
+                        (Some(vec![0x00, 0x00, 0x00, 0x03].into()), Some(vec![0x6a, 0x6b].into()))],
+        };
+        let (kt, vt) = (ColumnType::Int, ColumnType::Varchar);
+        let gm = GenericMap::new(rm, &kt, &vt);
+        assert_eq!("{1: \"fg\", 2: \"hi\", 3: \"jk\"}", format!("{:?}", gm));
+    }
 
+    // TODO: Test all others too
 }
