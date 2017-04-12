@@ -37,7 +37,7 @@ pub enum Message {
     Authenticate(AuthenticateMessage),
     AuthSuccess(AuthSuccessMessage),
     Error(ErrorMessage),
-    Result,
+    Result(ResultMessage),
 }
 
 pub trait CqlDecode<T> {

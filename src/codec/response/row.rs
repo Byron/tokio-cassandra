@@ -5,6 +5,7 @@ use codec::response::ColumnSpec;
 
 use super::*;
 
+#[derive(Debug)]
 pub struct Row {
     raw_cols: Vec<Option<BytesMut>>,
 }

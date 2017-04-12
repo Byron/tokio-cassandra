@@ -25,6 +25,7 @@ pub enum StreamingMessage {
     Authenticate(response::AuthenticateMessage),
     AuthSuccess(response::AuthSuccessMessage),
     Ready,
+    Result(response::ResultMessage), // FIXME: later use chunked message
 }
 
 impl From<StreamingMessage> for response::Message {
@@ -36,6 +37,7 @@ impl From<StreamingMessage> for response::Message {
             Error(msg) => response::Message::Error(msg),
             AuthSuccess(msg) => response::Message::AuthSuccess(msg),
             Authenticate(msg) => response::Message::Authenticate(msg),
+            Result(msg) => response::Message::Result(msg),
             Partial(_) => panic!("Partials are not suppported - this is just used during handshake"),
         }
     }
@@ -49,7 +51,7 @@ impl From<response::Message> for StreamingMessage {
             response::Message::AuthSuccess(msg) => StreamingMessage::AuthSuccess(msg),
             response::Message::Authenticate(msg) => StreamingMessage::Authenticate(msg),
             response::Message::Error(msg) => StreamingMessage::Error(msg),
-            response::Message::Result => unimplemented!(),
+            response::Message::Result(msg) => StreamingMessage::Result(msg),
         }
     }
 }

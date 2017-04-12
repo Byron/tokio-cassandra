@@ -5,6 +5,34 @@ use bytes::BytesMut;
 
 use super::*;
 
+
+
+#[derive(Debug)]
+pub enum ResultMessage {
+    Rows { rows: Vec<Row> },
+}
+
+impl CqlDecode<ResultMessage> for ResultMessage {
+    fn decode(v: ProtocolVersion, buf: BytesMut) -> Result<ResultMessage> {
+        let (buf, result_header) = ResultHeader::decode(v, buf)?;
+        let result_header = result_header.expect("should have all bytes when using full body decode");
+
+        Ok(match result_header {
+               ResultHeader::Rows(rows_metadata) => {
+            let mut v = Vec::new();
+            let mut d = buf;
+            for _ in 0..rows_metadata.rows_count {
+                let (buf, row) = Row::decode(d, &rows_metadata)?;
+                v.push(row.expect("should not encounter unfinished row here"));
+                d = buf
+            }
+            ResultMessage::Rows { rows: v }
+        }
+               _ => unimplemented!(),
+           })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ResultHeader {
     Void,
@@ -748,5 +776,15 @@ mod test {
         let res = ColumnType::decode(buf.into()).unwrap();
         let exp = ColumnType::Tuple(TupleDefinition(vec![ColumnType::Varchar, ColumnType::Decimal]));
         assert_eq!(res.1, Some(exp));
+    }
+
+    #[test]
+    fn decode_result_message() {
+        let msg = include_bytes!("../../../tests/fixtures/v3/responses/result_rows.msg");
+        let buf = Vec::from(skip_header(&msg[..])).into();
+        let msg = ResultMessage::decode(ProtocolVersion::Version3, buf).unwrap();
+
+        let ResultMessage::Rows { rows } = msg;
+        assert_eq!(1, rows.len());
     }
 }

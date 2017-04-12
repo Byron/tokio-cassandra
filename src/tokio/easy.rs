@@ -21,6 +21,7 @@ pub enum Message {
     Error(response::ErrorMessage),
     AuthSuccess(response::AuthSuccessMessage),
     Authenticate(response::AuthenticateMessage),
+    Result(response::ResultMessage),
     Ready,
 }
 
@@ -32,6 +33,7 @@ impl From<StreamingMessage> for Message {
             StreamingMessage::Error(msg) => Message::Error(msg),
             StreamingMessage::AuthSuccess(msg) => Message::AuthSuccess(msg),
             StreamingMessage::Authenticate(msg) => Message::Authenticate(msg),
+            StreamingMessage::Result(msg) => Message::Result(msg),
             StreamingMessage::Partial(_stream) => {
                 // TODO: exhaust stream and build a singular response in a blocking fashion
                 unimplemented!()
