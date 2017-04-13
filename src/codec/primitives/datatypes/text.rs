@@ -47,6 +47,20 @@ impl Debug for Ascii {
     }
 }
 
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Ascii {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        let mut s = String::with_capacity(self.inner.len());
+        for c in &self.inner {
+            s.push(c as char);
+        }
+
+        serializer.serialize_str(&s)
+    }
+}
+
 // Bounds-Checking in Constructor
 #[derive(PartialEq, Clone)]
 pub struct Text {
@@ -98,11 +112,6 @@ impl Debug for Text {
 mod test {
     use super::*;
 
-    #[cfg(feature = "with-serde")]
-    extern crate serde_test;
-    #[cfg(feature = "with-serde")]
-    use self::serde_test::{Token, assert_ser_tokens};
-
     #[test]
     fn ascii_debug() {
         let x = Ascii::try_from(vec![0x32, 0x33, 0x34]).unwrap();
@@ -121,10 +130,31 @@ mod test {
         assert_eq!("\"abc123\"", format!("{:?}", x))
     }
 
-    #[cfg(feature = "with-serde")]
+}
+
+#[cfg(feature = "with-serde")]
+#[cfg(test)]
+mod serde_testing {
+    use super::*;
+
+    extern crate serde_test;
+    use self::serde_test::{Token, assert_ser_tokens};
+
     #[test]
-    fn varchar_serde() {
+    fn varchar() {
         let vc = Varchar::try_from("abc123").unwrap();
         assert_ser_tokens(&vc, &[Token::Str("abc123")]);
+    }
+
+    #[test]
+    fn text() {
+        let t = Text::try_from("abc123").unwrap();
+        assert_ser_tokens(&t, &[Token::Str("abc123")]);
+    }
+
+    #[test]
+    fn ascii() {
+        let x = Ascii::try_from(vec![0x32, 0x33, 0x34]).unwrap();
+        assert_ser_tokens(&x, &[Token::Str("234")]);
     }
 }

@@ -39,6 +39,15 @@ impl Debug for Bigint {
     }
 }
 
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Bigint {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_i64(self.inner)
+    }
+}
+
 #[derive(PartialEq, Eq, Clone)]
 pub struct Varint {
     inner: BytesMut,
@@ -316,5 +325,20 @@ mod test {
 
         let x = Decimal::new(2, Varint::try_from(vec![0x05, 0x09]).unwrap());
         assert_eq!("12.89", format!("{:?}", x));
+    }
+}
+
+#[cfg(feature = "with-serde")]
+#[cfg(test)]
+mod serde_testing {
+    use super::*;
+
+    extern crate serde_test;
+    use self::serde_test::{Token, assert_ser_tokens};
+
+    #[test]
+    fn bigint_serde() {
+        let x = Bigint::new(-123);
+        assert_ser_tokens(&x, &[Token::I64(-123)]);
     }
 }
