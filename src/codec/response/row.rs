@@ -87,7 +87,7 @@ mod test {
     use codec::primitives::datatypes::*;
     use codec::primitives::{CqlFrom, CqlString};
     use bytes::BytesMut;
-    use super::super::{ColumnSpec, RowsMetadata, ColumnType, TableSpec, UdtDefinition, UdtField};
+    use super::super::{ColumnSpec, RowsMetadata, ColumnType, TableSpec};
     use std::fmt::Write;
 
     fn as_bytes<T: CqlSerializable>(data: &T) -> Option<BytesMut> {

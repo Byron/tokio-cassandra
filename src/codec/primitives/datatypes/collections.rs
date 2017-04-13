@@ -1,7 +1,6 @@
 use super::*;
-use std::fmt::Debug;
-use codec::response::{TupleDefinition, UdtDefinition, UdtField};
-use codec::primitives::{CqlFrom, CqlString};
+use std::fmt::{Write, Debug};
+use codec::response::{TupleDefinition, UdtDefinition};
 
 // Bounds checking needs to be done in constructor
 #[derive(PartialEq, Eq, Clone)]
@@ -479,6 +478,8 @@ pub type GenericSet<'a> = GenericList<'a>;
 #[cfg(test)]
 mod test {
     use super::*;
+    use codec::response::UdtField;
+    use codec::primitives::{CqlFrom, CqlString};
 
     #[test]
     fn list_debug() {

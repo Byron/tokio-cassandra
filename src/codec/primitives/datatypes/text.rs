@@ -1,5 +1,5 @@
 use super::*;
-use std::fmt::Debug;
+use std::fmt::{Write, Debug};
 
 // Bounds checking needs to be done in constructor
 #[derive(PartialEq, Eq, Clone)]
@@ -77,6 +77,15 @@ impl CqlSerializable for Text {
     }
 }
 
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Text {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_str(&self.inner)
+    }
+}
+
 pub type Varchar = Text;
 
 impl Debug for Text {
@@ -88,6 +97,11 @@ impl Debug for Text {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[cfg(feature = "with-serde")]
+    extern crate serde_test;
+    #[cfg(feature = "with-serde")]
+    use self::serde_test::{Token, assert_ser_tokens};
 
     #[test]
     fn ascii_debug() {
@@ -105,5 +119,12 @@ mod test {
     fn varchar_debug() {
         let x = Varchar::try_from("abc123").unwrap();
         assert_eq!("\"abc123\"", format!("{:?}", x))
+    }
+
+    #[cfg(feature = "with-serde")]
+    #[test]
+    fn varchar_serde() {
+        let vc = Varchar::try_from("abc123").unwrap();
+        assert_ser_tokens(&vc, &[Token::Str("abc123")]);
     }
 }

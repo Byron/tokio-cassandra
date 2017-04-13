@@ -39,6 +39,9 @@ version = "0.9"
 optional = true
 version = "0.1"
 
+[dev-dependencies]
+serde_test= "0.9"
+
 [features]
 default = []
 with-openssl = ["tokio-openssl", "openssl"]

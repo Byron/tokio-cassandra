@@ -1,5 +1,5 @@
 use super::*;
-use std::fmt::Debug;
+use std::fmt::{Write, Debug};
 use bytes::BufMut;
 use byteorder::ByteOrder;
 

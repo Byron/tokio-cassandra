@@ -4,9 +4,8 @@ use bytes::BytesMut;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::collections::{HashSet, HashMap};
 use std::marker::PhantomData;
-use std::fmt::{Formatter, Write};
+use std::fmt::Formatter;
 use codec::response::ColumnType;
-use std::ops::Deref;
 
 type BytesLen = i32;
 
