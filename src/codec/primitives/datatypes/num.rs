@@ -341,4 +341,10 @@ mod serde_testing {
         let x = Bigint::new(-123);
         assert_ser_tokens(&x, &[Token::I64(-123)]);
     }
+
+    #[test]
+    fn varint_serde() {
+        let x = Varint::try_from(vec![0x00, 0x02]).unwrap();
+//        assert_ser_tokens(&x, &[Token::I64(-123)]);
+    }
 }

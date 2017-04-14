@@ -44,6 +44,6 @@ mod test {
     #[test]
     fn blob_display() {
         let x = Blob::try_from(vec![0x01, 0x02]).unwrap();
-        assert_eq!("[1, 2]", format!("{:?}", x));
+        assert_eq!("b\"\\x01\\x02\"", format!("{:?}", x));
     }
 }
