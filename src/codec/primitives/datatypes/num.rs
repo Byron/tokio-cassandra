@@ -113,6 +113,15 @@ impl ::std::fmt::Display for Varint {
     }
 }
 
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Varint {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_str(&format!("{:?}", self))
+    }
+}
+
 #[derive(PartialEq, Clone)]
 pub struct Double {
     inner: f64,
@@ -149,6 +158,14 @@ impl CqlSerializable for Double {
     }
 }
 
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Double {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_f64(self.inner)
+    }
+}
 
 #[derive(PartialEq, Clone)]
 pub struct Float {
@@ -186,6 +203,15 @@ impl CqlSerializable for Float {
     }
 }
 
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Float {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_f32(self.inner)
+    }
+}
+
 #[derive(PartialEq, Clone)]
 pub struct Int {
     inner: i32,
@@ -219,6 +245,15 @@ impl CqlSerializable for Int {
 
     fn bytes_len(&self) -> Option<BytesLen> {
         Some(4)
+    }
+}
+
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Int {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_i32(self.inner)
     }
 }
 
@@ -278,6 +313,15 @@ impl Debug for Decimal {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Decimal {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_str(&format!("{:?}", self))
     }
 }
 
@@ -345,6 +389,36 @@ mod serde_testing {
     #[test]
     fn varint_serde() {
         let x = Varint::try_from(vec![0x00, 0x02]).unwrap();
-//        assert_ser_tokens(&x, &[Token::I64(-123)]);
+        assert_ser_tokens(&x, &[Token::Str("2")]);
+    }
+
+    #[test]
+    fn float_serde() {
+        let x = Float::new(-1.23);
+        assert_ser_tokens(&x, &[Token::F32(-1.23)]);
+    }
+
+    #[test]
+    fn double_serde() {
+        let x = Double::new(-1.23);
+        assert_ser_tokens(&x, &[Token::F64(-1.23)]);
+    }
+
+    #[test]
+    fn int_serde() {
+        let x = Int::new(-123);
+        assert_ser_tokens(&x, &[Token::I32(-123)]);
+    }
+
+    #[test]
+    fn decimal_serde() {
+        let x = Decimal::new(2, Varint::try_from(vec![0x09]).unwrap());
+        assert_ser_tokens(&x, &[Token::Str("0.009")]);
+
+        let x = Decimal::new(0, Varint::try_from(vec![0x09]).unwrap());
+        assert_ser_tokens(&x, &[Token::Str("9")]);
+
+        let x = Decimal::new(2, Varint::try_from(vec![0x05, 0x09]).unwrap());
+        assert_ser_tokens(&x, &[Token::Str("12.89")]);
     }
 }
