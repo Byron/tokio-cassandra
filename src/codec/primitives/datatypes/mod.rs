@@ -9,7 +9,7 @@ use codec::response::ColumnType;
 
 type BytesLen = i32;
 
-error_chain!{
+error_chain! {
     errors {
         InvalidAscii
         Incomplete
@@ -36,21 +36,27 @@ pub trait TryFrom<T>
 }
 
 mod byte;
+
 pub use self::byte::*;
 
 mod collections;
+
 pub use self::collections::*;
 
 mod num;
+
 pub use self::num::*;
 
 mod text;
+
 pub use self::text::*;
 
 mod primitive;
+
 pub use self::primitive::*;
 
 mod special;
+
 pub use self::special::*;
 
 fn serialize_bytes<T>(data: &Option<T>, buf: &mut BytesMut)
@@ -139,6 +145,76 @@ macro_rules! debug_cell {
 }
 
 debug_cell!(
+    ColumnType::Bigint => Bigint,
+    ColumnType::Blob => Blob,
+    ColumnType::Custom(_) => Blob,
+    ColumnType::Counter => Bigint,
+    ColumnType::Boolean => Boolean,
+    ColumnType::Timestamp => Timestamp,
+    ColumnType::Uuid => Uuid,
+    ColumnType::Timeuuid => TimeUuid,
+    ColumnType::Double => Double,
+    ColumnType::Float => Float,
+    ColumnType::Int => Int,
+    ColumnType::Decimal => Decimal,
+    ColumnType::Varint => Varint,
+    ColumnType::Inet => Inet,
+    ColumnType::Varchar => Varchar,
+    ColumnType::Ascii => Ascii
+);
+
+pub struct SerializableCell<'a>(&'a ColumnType, &'a Option<BytesMut>);
+
+#[cfg(feature = "with-serde")]
+impl<'a> ::serde::Serialize for SerializableCell<'a> {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serde_cell(self.0, self.1.clone(), serializer)
+    }
+}
+
+macro_rules! serde_cell {
+    ($($s : pat => $t : ident ), *) => {
+        pub fn serde_cell<S>(coltype: &ColumnType, value: Option<BytesMut>,
+                              ser: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer {
+            use serde::ser::Serialize;
+            if let Some(value) = value {
+                match *coltype {
+                    $ (
+                        $s => Serialize::serialize(&Some($t::deserialize(value).map_err(|msg|
+                             ::serde::ser::Error::custom(format!("{:?}", msg)))?), ser),
+                    ) *
+                    ColumnType::List(ref d) => {
+                        Serialize::serialize(&Some((GenericList::new(RawList::deserialize(value)
+                            .map_err(|msg| ::serde::ser::Error::custom(format!("{:?}", msg)))?, d))), ser)
+                    }
+                    ColumnType::Set(ref d) => {
+                        Serialize::serialize(&Some((GenericSet::new(RawSet::deserialize(value)
+                            .map_err(|msg| ::serde::ser::Error::custom(format!("{:?}", msg)))?, d))), ser)
+                    }
+                    ColumnType::Map(ref k, ref v) => {
+                        Serialize::serialize(&Some((GenericMap::new(RawMap::deserialize(value)
+                            .map_err(|msg| ::serde::ser::Error::custom(format!("{:?}", msg)))?, k, v))), ser)
+                    }
+                    ColumnType::Udt(ref d) => {
+                        Serialize::serialize(&Some((Udt::new(RawUdt::deserialize(value)
+                            .map_err(|msg| ::serde::ser::Error::custom(format!("{:?}", msg)))?, d))), ser)
+                    }
+                    ColumnType::Tuple(ref d) => {
+                        Serialize::serialize(&Some((Tuple::new(RawTuple::deserialize(value)
+                            .map_err(|msg| ::serde::ser::Error::custom(format!("{:?}", msg)))?, d))), ser)
+                    }
+                }
+            } else {
+                ser.serialize_none()
+            }
+        }
+    }
+}
+
+serde_cell!(
     ColumnType::Bigint => Bigint,
     ColumnType::Blob => Blob,
     ColumnType::Custom(_) => Blob,
