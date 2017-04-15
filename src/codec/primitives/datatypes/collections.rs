@@ -283,15 +283,13 @@ impl<'a> ::serde::Serialize for GenericMap<'a> {
         where S: ::serde::ser::Serializer
     {
         use serde::ser::SerializeMap;
-        let mut map = serializer.serialize_map(None)?;
+        let mut map = serializer.serialize_map(Some(self.inner.inner.len()))?;
         for &(ref k, ref v) in &self.inner.inner {
-            //            if let Some(ref k) = k {
-            let cell = SerializableCell(self.key_type, k);
+            let cell = SerializableCell(self.key_type, k.clone());
             map.serialize_key(&cell)?;
 
-            let cell = SerializableCell(self.value_type, v);
+            let cell = SerializableCell(self.value_type, v.clone());
             map.serialize_value(&cell)?;
-            //            }
         }
         map.end()
     }
@@ -495,7 +493,7 @@ impl<'a> ::serde::Serialize for Udt<'a> {
         for e in &self.inner.inner {
             let t = &self.def.fields[i];
             map.serialize_key(t.0.as_ref())?;
-            let cell = SerializableCell(&t.1, e);
+            let cell = SerializableCell(&t.1, e.clone());
             map.serialize_value(&cell)?;
             i = i + 1;
         }
@@ -550,7 +548,7 @@ impl<'a> ::serde::Serialize for Tuple<'a> {
         let mut i = 0;
         for e in &self.inner.inner {
             let t = &self.def.0[i];
-            let cell = SerializableCell(&t, e);
+            let cell = SerializableCell(&t, e.clone());
             tuple.serialize_element(&cell)?;
             i = i + 1;
         }
@@ -601,7 +599,7 @@ impl<'a> ::serde::Serialize for GenericList<'a> {
             .serialize_seq_fixed_size(self.inner.inner.len())?;
 
         for e in &self.inner.inner {
-            let cell = SerializableCell(self.def, e);
+            let cell = SerializableCell(self.def, e.clone());
             seq.serialize_element(&cell)?;
         }
         seq.end()
@@ -917,7 +915,7 @@ mod serde_testing {
         let (kt, vt) = (ColumnType::Int, ColumnType::Varchar);
         let gm = GenericMap::new(rm, &kt, &vt);
         assert_ser_tokens(&gm,
-                          &[Token::MapStart(None),
+                          &[Token::MapStart(Some(3)),
                             Token::MapSep,
                             Token::Option(true),
                             Token::I32(1),

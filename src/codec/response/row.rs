@@ -1,4 +1,4 @@
-use codec::primitives::datatypes::CqlSerializable;
+use codec::primitives::datatypes::{SerializableCell, CqlSerializable};
 use codec::primitives::decode;
 use bytes::BytesMut;
 use codec::response::ColumnSpec;
@@ -78,6 +78,31 @@ impl<'a> Iterator for RowIterator<'a> {
             self.pos += 1;
             Some((&self.meta.column_spec[i], self.row.raw_cols[i].clone()))
         }
+    }
+}
+
+pub struct SerializableRow<'a>(Row, &'a RowsMetadata);
+
+#[cfg(feature = "with-serde")]
+impl<'a> ::serde::Serialize for SerializableRow<'a> {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        let iter = self.0
+            .col_iter(self.1)
+            .map(|(k, v)| (k.colname(), SerializableCell(k.coltype(), v)));
+        serializer.collect_map(iter)
+        //        use serde::ser::SerializeMap;
+        //        let mut map = serializer.serialize_map(Some(self.inner.inner.len()))?;
+        //        let mut i = 0;
+        //        for e in &self.inner.inner {
+        //            let t = &self.def.fields[i];
+        //            map.serialize_key(t.0.as_ref())?;
+        //            let cell = SerializableCell(&t.1, e);
+        //            map.serialize_value(&cell)?;
+        //            i = i + 1;
+        //        }
+        //        map.end()
     }
 }
 
@@ -198,6 +223,71 @@ mod test {
                    s);
     }
 
-
     // TODO: Test for Errorcase
+}
+
+#[cfg(feature = "with-serde")]
+#[cfg(test)]
+mod serde_testing {
+    use super::*;
+    extern crate serde_test;
+    use self::serde_test::{Token, assert_ser_tokens};
+    use codec::primitives::datatypes::*;
+    use codec::primitives::{CqlFrom, CqlString};
+    use bytes::BytesMut;
+    use super::super::{ColumnSpec, RowsMetadata, ColumnType, TableSpec};
+
+    fn as_bytes<T: CqlSerializable>(data: &T) -> Option<BytesMut> {
+        let mut bytes = BytesMut::with_capacity(128);
+        data.serialize(&mut bytes);
+        Some(bytes)
+    }
+
+    #[test]
+    fn row_serde() {
+        let row_metadata = RowsMetadata {
+            global_tables_spec: None,
+            paging_state: None,
+            no_metadata: false,
+            column_spec: vec![ColumnSpec::WithoutGlobalSpec {
+                                  table_spec: TableSpec::new("ks", "testtable"),
+                                  name: cql_string!("col1"),
+                                  column_type: ColumnType::Int,
+                              },
+                              ColumnSpec::WithoutGlobalSpec {
+                                  table_spec: TableSpec::new("ks", "testtable"),
+                                  name: cql_string!("col2"),
+                                  column_type: ColumnType::Varchar,
+                              },
+                              ColumnSpec::WithoutGlobalSpec {
+                                  table_spec: TableSpec::new("ks", "testtable"),
+                                  name: cql_string!("col3"),
+                                  column_type: ColumnType::Double,
+                              }],
+            rows_count: 1,
+        };
+
+        let row = Row {
+            raw_cols: vec![as_bytes(&Int::new(123)),
+                           as_bytes(&Varchar::try_from("hello world").unwrap()),
+                           as_bytes(&Double::new(1.234))],
+        };
+
+        assert_ser_tokens(&SerializableRow(row, &row_metadata),
+                          &[Token::MapStart(None),
+                            Token::MapSep,
+                            Token::Str("testtable.col1"),
+                            Token::Option(true),
+                            Token::I32(123),
+                            Token::MapSep,
+                            Token::Str("testtable.col2"),
+                            Token::Option(true),
+                            Token::Str("hello world"),
+                            Token::MapSep,
+                            Token::Str("testtable.col3"),
+                            Token::Option(true),
+                            Token::F64(1.234),
+                            Token::MapEnd]);
+    }
+
 }

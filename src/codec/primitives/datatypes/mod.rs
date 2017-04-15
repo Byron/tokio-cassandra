@@ -163,7 +163,7 @@ debug_cell!(
     ColumnType::Ascii => Ascii
 );
 
-pub struct SerializableCell<'a>(&'a ColumnType, &'a Option<BytesMut>);
+pub struct SerializableCell<'a>(pub &'a ColumnType, pub Option<BytesMut>);
 
 #[cfg(feature = "with-serde")]
 impl<'a> ::serde::Serialize for SerializableCell<'a> {
