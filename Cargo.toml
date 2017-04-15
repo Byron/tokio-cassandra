@@ -47,7 +47,3 @@ default = []
 with-openssl = ["tokio-openssl", "openssl"]
 with-serde = ["serde_derive", "serde"]
 
-[replace]
-
-[replace."tokio-openssl:0.1.0"]
-git = "https://github.com/nhellwig/tokio-openssl"
