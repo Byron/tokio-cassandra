@@ -46,6 +46,15 @@ impl Debug for Boolean {
     }
 }
 
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Boolean {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_bool(self.inner)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -54,5 +63,20 @@ mod test {
     fn boolean_debug() {
         assert_eq!("true", format!("{:?}", Boolean::new(true)));
         assert_eq!("false", format!("{:?}", Boolean::new(false)));
+    }
+}
+
+#[cfg(feature = "with-serde")]
+#[cfg(test)]
+mod serde_testing {
+    use super::*;
+
+    extern crate serde_test;
+    use self::serde_test::{Token, assert_ser_tokens};
+
+    #[test]
+    fn boolean_serde() {
+        let x = Boolean::new(true);
+        assert_ser_tokens(&x, &[Token::Bool(true)]);
     }
 }
