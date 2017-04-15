@@ -53,6 +53,15 @@ impl Debug for Inet {
     }
 }
 
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Inet {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_str(&format!("{:?}", self))
+    }
+}
+
 #[derive(PartialEq, Eq, Clone)]
 pub struct Timestamp {
     epoch: i64,
@@ -87,6 +96,15 @@ impl Debug for Timestamp {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         let naive = ::chrono::naive::datetime::NaiveDateTime::from_timestamp(self.epoch, 0);
         ::std::fmt::Display::fmt(&naive, fmt)
+    }
+}
+
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Timestamp {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_str(&format!("{:?}", self))
     }
 }
 
@@ -145,6 +163,15 @@ impl Debug for Uuid {
     }
 }
 
+#[cfg(feature = "with-serde")]
+impl ::serde::Serialize for Uuid {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        serializer.serialize_str(&format!("{:?}", self))
+    }
+}
+
 pub type TimeUuid = Uuid;
 
 #[cfg(test)]
@@ -181,5 +208,45 @@ mod test {
         let uuid = TimeUuid::new([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
         assert_eq!("00010203-0405-0607-0809-0A0B0C0D0E0F",
                    format!("{:?}", uuid));
+    }
+}
+
+
+#[cfg(feature = "with-serde")]
+#[cfg(test)]
+mod serde_testing {
+    use super::*;
+
+    extern crate serde_test;
+    use self::serde_test::{Token, assert_ser_tokens};
+
+    #[test]
+    fn inet4_debug() {
+        let iv4 = Inet::Ipv4(Ipv4Addr::new(127, 0, 0, 1));
+        assert_ser_tokens(&iv4, &[Token::Str("127.0.0.1")]);
+    }
+
+    #[test]
+    fn inet6_debug() {
+        let iv6 = Inet::Ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff));
+        assert_ser_tokens(&iv6, &[Token::Str("::ffff:192.10.2.255")]);
+    }
+
+    #[test]
+    fn timestamp_debug() {
+        let timestamp = Timestamp::new(1491283495);
+        assert_ser_tokens(&timestamp, &[Token::Str("2017-04-04 05:24:55")]);
+    }
+
+    #[test]
+    fn uuid_debug() {
+        let uuid = Uuid::new([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        assert_ser_tokens(&uuid, &[Token::Str("00010203-0405-0607-0809-0A0B0C0D0E0F")]);
+    }
+
+    #[test]
+    fn timeuuid_debug() {
+        let uuid = TimeUuid::new([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        assert_ser_tokens(&uuid, &[Token::Str("00010203-0405-0607-0809-0A0B0C0D0E0F")]);
     }
 }
