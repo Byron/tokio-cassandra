@@ -174,6 +174,7 @@ impl<'a> ::serde::Serialize for SerializableCell<'a> {
     }
 }
 
+#[cfg(feature = "with-serde")]
 macro_rules! serde_cell {
     ($($s : pat => $t : ident ), *) => {
         pub fn serde_cell<S>(coltype: &ColumnType, value: Option<BytesMut>,
@@ -214,6 +215,7 @@ macro_rules! serde_cell {
     }
 }
 
+#[cfg(feature = "with-serde")]
 serde_cell!(
     ColumnType::Bigint => Bigint,
     ColumnType::Blob => Blob,
