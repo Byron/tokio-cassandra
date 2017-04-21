@@ -76,7 +76,7 @@ impl<T: ::serde::Serialize + CqlSerializable> ::serde::Serialize for List<T> {
     {
         use serde::ser::SerializeSeq;
 
-        let mut seq = serializer.serialize_seq_fixed_size(self.inner.len())?;
+        let mut seq = serializer.serialize_seq(Some(self.inner.len()))?;
         for e in &self.inner {
             seq.serialize_element(e)?;
         }
@@ -385,7 +385,7 @@ impl<T: ::serde::Serialize + CqlSerializable> ::serde::Serialize for Set<T> {
     {
         use serde::ser::SerializeSeq;
 
-        let mut seq = serializer.serialize_seq_fixed_size(self.inner.len())?;
+        let mut seq = serializer.serialize_seq(Some(self.inner.len()))?;
         for e in &self.inner {
             let v = T::deserialize(e.clone()).expect("should not fail here");
             seq.serialize_element(&v)?;
@@ -596,7 +596,7 @@ impl<'a> ::serde::Serialize for GenericList<'a> {
     {
         use serde::ser::SerializeSeq;
         let mut seq = serializer
-            .serialize_seq_fixed_size(self.inner.inner.len())?;
+            .serialize_seq(Some(self.inner.inner.len()))?;
 
         for e in &self.inner.inner {
             let cell = SerializableCell(self.def, e.clone());
