@@ -726,15 +726,12 @@ mod serde_testing {
     fn list_serde() {
         let x = List::try_from(vec![Some(Boolean::new(false)), Some(Boolean::new(true)), None]).unwrap();
         assert_ser_tokens(&x,
-                          &[Token::SeqArrayStart(3),
-                            Token::SeqSep,
-                            Token::Option(true),
+                          &[Token::Seq{ len: Some( 3 ) },
+                            Token::Some,
                             Token::Bool(false),
-                            Token::SeqSep,
-                            Token::Option(true),
+                            Token::Some,
                             Token::Bool(true),
-                            Token::SeqSep,
-                            Token::Option(false),
+                            Token::None,
                             Token::SeqEnd]);
     }
 
@@ -747,15 +744,12 @@ mod serde_testing {
                                          .unwrap(),
                                  &ctype);
         assert_ser_tokens(&x,
-                          &[Token::SeqArrayStart(3),
-                            Token::SeqSep,
-                            Token::Option(true),
+                          &[Token::Seq{ len: Some(3) },
+                            Token::Some,
                             Token::Str("fg"),
-                            Token::SeqSep,
-                            Token::Option(true),
+                            Token::Some,
                             Token::Str("hi"),
-                            Token::SeqSep,
-                            Token::Option(false),
+                            Token::None,
                             Token::SeqEnd]);
     }
 
@@ -769,20 +763,17 @@ mod serde_testing {
                                 &ctype);
 
         assert_ser_tokens(&x,
-                          &[Token::SeqArrayStart(3),
-                            Token::SeqSep,
-                            Token::Option(true),
+                          &[Token::Seq{ len: Some( 3  )},
+                            Token::Some,
                             Token::Str("fg"),
-                            Token::SeqSep,
-                            Token::Option(true),
+                            Token::Some,
                             Token::Str("hi"),
-                            Token::SeqSep,
-                            Token::Option(false),
+                            Token::None,
                             Token::SeqEnd]);
     }
 
     #[test]
-    fn set_serde() {
+    fn set_serde() { 
         let x = {
             let mut s = Set::new();
             s.insert(Boolean::new(false));
@@ -790,28 +781,24 @@ mod serde_testing {
             s
         };
 
-        let r1 = panic::catch_unwind(|| {
-            assert_ser_tokens(&x,
-                              &[Token::SeqArrayStart(2),
-                                Token::SeqSep,
+        let r1 = panic::catch_unwind(|| { 
+assert_ser_tokens(&x,
+                              &[Token::Seq{ len:Some ( 2  )},
                                 Token::Bool(false),
-                                Token::SeqSep,
                                 Token::Bool(true),
                                 Token::SeqEnd]);
-        });
+    });
 
         let r2 = panic::catch_unwind(|| {
             assert_ser_tokens(&x,
-                              &[Token::SeqArrayStart(2),
-                                Token::SeqSep,
+                              &[Token::Seq{ len: Some( 2  )},
                                 Token::Bool(true),
-                                Token::SeqSep,
                                 Token::Bool(false),
                                 Token::SeqEnd]);
         });
 
         assert!(r1.is_ok() || r2.is_ok());
-    }
+ 
 
 
     #[test]
@@ -829,18 +816,19 @@ mod serde_testing {
         };
 
         assert_ser_tokens(&Udt::new(udt, &def),
-                          &[Token::MapStart(Some(3)),
-                            Token::MapSep,
+                          &[Token::Map{ len: Some(3) },
+
                             Token::Str("eid"),
-                            Token::Option(true),
+                            Token::Some,
                             Token::Str("fgh"),
-                            Token::MapSep,
+
                             Token::Str("name"),
-                            Token::Option(false),
-                            Token::MapSep,
+                            Token::None,
+
                             Token::Str("sales"),
-                            Token::Option(true),
+                            Token::Some,
                             Token::I32(80),
+
                             Token::MapEnd]);
     }
 
@@ -853,14 +841,11 @@ mod serde_testing {
         let def = TupleDefinition(vec![ColumnType::Varchar, ColumnType::Varchar, ColumnType::Int]);
 
         assert_ser_tokens(&Tuple::new(tuple, &def),
-                          &[Token::TupleStart(3),
-                            Token::TupleSep,
-                            Token::Option(true),
+                          &[Token::Tuple{ len: 3 },
+                            Token::Some,
                             Token::Str("fgh"),
-                            Token::TupleSep,
-                            Token::Option(false),
-                            Token::TupleSep,
-                            Token::Option(true),
+                            Token::None,
+                            Token::Some,
                             Token::I32(80),
                             Token::TupleEnd]);
     }
@@ -876,29 +861,31 @@ mod serde_testing {
 
         let r1 = panic::catch_unwind(|| {
             assert_ser_tokens(&m,
-                              &[Token::MapStart(Some(2)),
-                                Token::MapSep,
+                              &[Token::Map{ len: Some(2) },
+                              
                                 Token::I32(1),
-                                Token::Option(true),
+                            Token::Some,
                                 Token::Str("fg"),
-                                Token::MapSep,
+
                                 Token::I32(2),
-                                Token::Option(true),
+                            Token::Some,
                                 Token::Str("hi"),
+
                                 Token::MapEnd]);
         });
 
         let r2 = panic::catch_unwind(|| {
             assert_ser_tokens(&m,
-                              &[Token::MapStart(Some(2)),
-                                Token::MapSep,
+                              &[Token::Map{ len: Some(2) },
+
                                 Token::I32(2),
-                                Token::Option(true),
+                                Token::Some,
                                 Token::Str("hi"),
-                                Token::MapSep,
+
                                 Token::I32(1),
-                                Token::Option(true),
+                                Token::Some,
                                 Token::Str("fg"),
+
                                 Token::MapEnd]);
         });
 
@@ -915,22 +902,24 @@ mod serde_testing {
         let (kt, vt) = (ColumnType::Int, ColumnType::Varchar);
         let gm = GenericMap::new(rm, &kt, &vt);
         assert_ser_tokens(&gm,
-                          &[Token::MapStart(Some(3)),
-                            Token::MapSep,
-                            Token::Option(true),
+                          &[Token::Map{ len: Some(3) },
+
+                            Token::Some,
                             Token::I32(1),
-                            Token::Option(true),
+                            Token::Some,
                             Token::Str("fg"),
-                            Token::MapSep,
-                            Token::Option(true),
+
+                            Token::Some,
                             Token::I32(2),
-                            Token::Option(true),
+                            Token::Some,
                             Token::Str("hi"),
-                            Token::MapSep,
-                            Token::Option(true),
+
+                            Token::Some,
                             Token::I32(3),
-                            Token::Option(true),
+                            Token::Some,
                             Token::Str("jk"),
+
                             Token::MapEnd]);
     }
+}
 }

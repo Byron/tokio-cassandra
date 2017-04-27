@@ -274,18 +274,17 @@ mod serde_testing {
         };
 
         assert_ser_tokens(&SerializableRow(row, &row_metadata),
-                          &[Token::MapStart(None),
-                            Token::MapSep,
+                          &[Token::Map{ len: None },
                             Token::Str("testtable.col1"),
-                            Token::Option(true),
+                            Token::Some,
                             Token::I32(123),
-                            Token::MapSep,
+
                             Token::Str("testtable.col2"),
-                            Token::Option(true),
+                            Token::Some,
                             Token::Str("hello world"),
-                            Token::MapSep,
+
                             Token::Str("testtable.col3"),
-                            Token::Option(true),
+                            Token::Some,
                             Token::F64(1.234),
                             Token::MapEnd]);
     }

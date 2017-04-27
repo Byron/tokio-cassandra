@@ -68,6 +68,6 @@ mod serde_testing {
     #[test]
     fn blob_serde() {
         let x = Blob::try_from(vec![0x01, 0x02]).unwrap();
-        assert_ser_tokens(&x, &[Token::Bytes(&[1, 2])]);
+        assert_ser_tokens(&x, &[Token::Bytes(b"\x01\x02")]);
     }
 }
