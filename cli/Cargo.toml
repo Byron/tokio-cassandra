@@ -37,7 +37,8 @@ version = "0.1"
 [dependencies.syntect]
 default-features = false
 optional = true
-version = "1.3.0"
+version = "1.4.0"
+features = ["parsing"]
 
 [dependencies.tokio-cassandra]
 features = ["with-serde", "with-openssl"]
@@ -50,11 +51,3 @@ default = ["colors"]
 
 [lib]
 name = "tcc"
-
-[replace]
-
-[replace."syntect:1.2.0"]
-git = "https://github.com/Byron/syntect"
-
-[replace."tokio-openssl:0.1.0"]
-git = "https://github.com/nhellwig/tokio-openssl"
