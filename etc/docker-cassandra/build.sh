@@ -7,7 +7,7 @@ IMAGE_TAG="pitrho/cassandra"
 
 # Custom die function.
 #
-die() { echo >&2 -e "\nRUN ERROR: $@\n"; exit 1; }
+die() { echo -e "\nRUN ERROR: " "$@" "\n" >&2 ; exit 1; }
 
 # Parse the command line flags.
 #
