@@ -18,15 +18,18 @@ mod collections;
 pub use self::collections::*;
 
 
-
-error_chain! {
-    errors {
-        MaximumLengthExceeded(l: usize) {
-          description("Too many elements container")
-          display("Expected not more than {} elements, got {}.", u16::max_value(), l)
+mod errors {
+    error_chain! {
+        errors {
+            MaximumLengthExceeded(l: usize) {
+              description("Too many elements container")
+              display("Expected not more than {} elements, got {}.", u16::max_value(), l)
+            }
         }
     }
 }
+
+pub use self::errors::{Error, ErrorKind, Result};
 
 pub trait CqlFrom<C, V>
 where

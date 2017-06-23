@@ -5,21 +5,25 @@ use codec::primitives::{CqlConsistency, CqlFrom, CqlStringMap, CqlString, CqlByt
 use codec::primitives::encode;
 use bytes::{BufMut, BytesMut};
 
-error_chain! {
-    foreign_links {
-        Io(::std::io::Error);
-        HeaderError(::codec::header::Error);
-        PrimitiveError(::codec::primitives::Error);
-    }
-    errors {
-        BodyLengthExceeded(len: usize) {
-            description("The length of the body exceeded the \
-            maximum length specified by the protocol")
-            display("The current body length {} exceeded the \
-            maximum allowed length for a body", len)
+mod errors {
+    error_chain! {
+        foreign_links {
+            Io(::std::io::Error);
+            HeaderError(::codec::header::Error);
+            PrimitiveError(::codec::primitives::Error);
+        }
+        errors {
+            BodyLengthExceeded(len: usize) {
+                description("The length of the body exceeded the \
+                maximum length specified by the protocol")
+                display("The current body length {} exceeded the \
+                maximum allowed length for a body", len)
+            }
         }
     }
 }
+
+pub use self::errors::{Error, ErrorKind, Result};
 
 pub trait CqlEncode {
     fn encode(&self, v: ProtocolVersion, f: &mut BytesMut) -> Result<usize>;

@@ -36,25 +36,29 @@
 use byteorder::{BigEndian, ReadBytesExt, ByteOrder};
 pub const HEADER_LENGTH: usize = 9;
 
-error_chain! {
-    errors {
-        UnsupportedVersion(v: u8) {
-            description("The protocol version of cassandra is unsupported")
-            display("The protocol version {} of cassandra is unsupported", v)
+mod errors {
+    error_chain! {
+        errors {
+            UnsupportedVersion(v: u8) {
+                description("The protocol version of cassandra is unsupported")
+                display("The protocol version {} of cassandra is unsupported", v)
+            }
+            InvalidDataLength(l: usize) {
+                description("The size of data is incorrect")
+                display("Expected a data size of {} bytes, but got {}", super::HEADER_LENGTH, l)
+            }
+            InvalidOpCode(c: u8) {
+                description("Could not parse value as opcode.")
+                display("Value {} is not a valid opcode", c)
+            }
         }
-        InvalidDataLength(l: usize) {
-            description("The size of data is incorrect")
-            display("Expected a data size of {} bytes, but got {}", HEADER_LENGTH, l)
+        foreign_links {
+            Io(::std::io::Error);
         }
-        InvalidOpCode(c: u8) {
-            description("Could not parse value as opcode.")
-            display("Value {} is not a valid opcode", c)
-        }
-    }
-    foreign_links {
-        Io(::std::io::Error);
     }
 }
+
+pub use self::errors::{Error, ErrorKind, Result};
 
 #[cfg_attr(feature = "with-serde", derive(Deserialize, Serialize))]
 #[derive(PartialEq, Debug, Clone)]

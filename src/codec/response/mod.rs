@@ -10,25 +10,28 @@ pub use self::row::*;
 mod simple_messages;
 pub use self::simple_messages::*;
 
-error_chain! {
-    foreign_links {
-        Io(::std::io::Error);
-        HeaderError(::codec::header::Error);
-        DecodeError(::codec::primitives::decode::Error);
-        DataTypeError(::codec::primitives::datatypes::Error);
-    }
-
-    errors {
-        Incomplete(err: String) {
-            description("Unsufficient bytes")
-            display("Buffer contains unsufficient bytes: {}", err)
+mod errors {
+    error_chain! {
+        foreign_links {
+            Io(::std::io::Error);
+            HeaderError(::codec::header::Error);
+            DecodeError(::codec::primitives::decode::Error);
+            DataTypeError(::codec::primitives::datatypes::Error);
         }
-        ParserError(err: String) {
-            description("Error during parsing")
-            display("{}", err)
+
+        errors {
+            Incomplete(err: String) {
+                description("Unsufficient bytes")
+                display("Buffer contains unsufficient bytes: {}", err)
+            }
+            ParserError(err: String) {
+                description("Error during parsing")
+                display("{}", err)
+            }
         }
     }
 }
+pub use self::errors::{Error, ErrorKind, Result};
 
 #[derive(Debug)]
 pub enum Message {

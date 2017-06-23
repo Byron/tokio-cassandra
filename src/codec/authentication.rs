@@ -1,10 +1,14 @@
 use bytes::{BufMut, BytesMut};
 
-error_chain! {
-    errors {
-        UnknownAuthenticator(auth: String)
+mod errors {
+    error_chain! {
+        errors {
+            UnknownAuthenticator(auth: String)
+        }
     }
 }
+
+pub use self::errors::{Error, ErrorKind, Result};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Credentials {

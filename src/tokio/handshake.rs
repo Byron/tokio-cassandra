@@ -7,7 +7,7 @@ use tokio_service::Service;
 use futures::{future, Future};
 use semver;
 
-use super::error::*;
+use super::error::{Error, Result, ErrorKind, ResultExt};
 use super::client::ClientHandle;
 use super::messages::StreamingMessage;
 

@@ -7,19 +7,41 @@ use std::marker::PhantomData;
 use std::fmt::Formatter;
 use codec::response::ColumnType;
 
+mod byte;
+pub use self::byte::*;
+
+mod collections;
+pub use self::collections::*;
+
+mod num;
+pub use self::num::*;
+
+mod text;
+pub use self::text::*;
+
+mod primitive;
+pub use self::primitive::*;
+
+mod special;
+pub use self::special::*;
+
 type BytesLen = i32;
 
-error_chain! {
-    errors {
-        InvalidAscii
-        Incomplete
-        MaximumLengthExceeded
-    }
+mod errors {
+    error_chain! {
+        errors {
+            InvalidAscii
+            Incomplete
+            MaximumLengthExceeded
+        }
 
-    foreign_links {
-        DecodeErr(::codec::primitives::decode::Error);
+        foreign_links {
+            DecodeErr(::codec::primitives::decode::Error);
+        }
     }
 }
+
+pub use self::errors::{Error, ErrorKind, Result};
 
 pub trait CqlSerializable
 where
@@ -37,29 +59,6 @@ where
     fn try_from(data: T) -> Result<Self>;
 }
 
-mod byte;
-
-pub use self::byte::*;
-
-mod collections;
-
-pub use self::collections::*;
-
-mod num;
-
-pub use self::num::*;
-
-mod text;
-
-pub use self::text::*;
-
-mod primitive;
-
-pub use self::primitive::*;
-
-mod special;
-
-pub use self::special::*;
 
 fn serialize_bytes<T>(data: &Option<T>, buf: &mut BytesMut)
 where
