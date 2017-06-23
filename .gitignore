@@ -1,12 +1,13 @@
 .DS_Store
 *.rs.bk
 .*.ok
+/.python
 target/
 Cargo.lock
 .idea/
 .vscode/
-.docker-cassandra/
-tests/fixtures/index-bare/
-tests/fixtures/index/
-.cargo-fuzz/
+/.docker-cassandra/
+/tests/fixtures/index-bare/
+/tests/fixtures/index/
+/.cargo-fuzz/
 *.iml

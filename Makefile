@@ -1,6 +1,8 @@
 CLI_EXECUTABLE=target/debug/tcc
 DB_IMAGE_OK=.db-image.ok
 DB_IMAGE_NAME=our/cassandra:latest
+VIRTUAL_ENV=.python
+CQLSH_EXECUTABLE=$(VIRTUAL_ENV)/bin/cqlsh
 
 DB_PORT=9042
 MAKESHELL=$(shell /usr/bin/env bash)
@@ -19,6 +21,7 @@ help:
 	$(info auth-docker-db   | Bring up a backgrounded cassandra database for local usage on 9042, optional TLS, requiring authentication)
 	$(info cert-docker-db   | Bring up a backgrounded cassandra database for local usage on 9042, requiring the client to show a certificate)
 	$(info attach-docker-db | run cassandra in foreground run with type=(tls|auth|plain))
+	$(info cqlsh-execute    | run a cqlsh process with certain arguments against the local database)
 	$(info fuzz             | try to run cargo-fuzz on the decoder - doesnt work right now)
 
 toc:
@@ -51,6 +54,15 @@ cert-docker-db: $(DB_IMAGE_OK)
 type ?= plain
 attach-docker-db:
 	DEBUG_RUN_IMAGE=true $(MAKE) $(type)-docker-db
+
+$(VIRTUAL_ENV):
+	virtualenv -p python2.7 $@
+
+$(CQLSH_EXECUTABLE): $(VIRTUAL_ENV)
+	$(VIRTUAL_ENV)/bin/pip install cqlsh
+
+cqlsh-execute: $(CQLSH_EXECUTABLE)
+	$(CQLSH_EXECUTABLE) -h localhost -e some-query
 
 cli-execute:
 	cd cli && cargo run --all-features -- -h localhost query -o yaml -e cql-query
