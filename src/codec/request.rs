@@ -170,7 +170,7 @@ impl QueryMessage {
 impl Default for QueryMessage {
     fn default() -> Self {
         QueryMessage {
-            query: CqlLongString::try_from("").unwrap(),
+            query: CqlLongString::try_from("").expect("an empty string to be valid"),
             values: None,
             consistency: CqlConsistency::One,
             skip_metadata: false,

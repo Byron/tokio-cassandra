@@ -15,7 +15,7 @@ extern crate env_logger;
 
 use clap::{SubCommand, Arg};
 
-use tcc::errors::*;
+use tcc::errors::Result;
 use tcc::{CertKind, ColorMode, OutputFormat, CliProtoVersion, ConnectionOptions, THEME_NAMES};
 
 quick_main!(run);
@@ -42,7 +42,8 @@ fn with_highlight_flags<'a, 'b>(sc: clap::App<'a, 'b>, default_color: &'a str) -
                 .possible_values(&ColorMode::variants())
                 .default_value(default_color)
                 .help(
-                    "Control how color is generated. 'auto' outputs it to a tty only, but won't do that ",
+                    "Control how color is generated. 'auto' outputs it to a tty only, 'off' \
+                        will never use color codes, whereas 'always' will unconditionally emit them.",
                 ),
         )
 }

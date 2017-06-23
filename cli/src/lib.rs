@@ -28,6 +28,7 @@ pub mod errors {
     use semver::SemVerError;
     use tokio_cassandra::codec;
     use tokio_cassandra::tokio;
+    use tokio_cassandra::codec::primitives::CqlString;
     use std::io;
 
     error_chain!{
@@ -49,6 +50,10 @@ pub mod errors {
         }
 
         errors {
+            CqlError(code: i32, s: CqlString) {
+                description("A CQL Error occurred")
+                display("{}: {}", code, s)
+            }
             Pk12PathFormat(s: String) {
                 description("Could not parse pk12 file path description: <path>:<password> is required")
                 display("Failed to parse '{}' as <path>:<password>", s)

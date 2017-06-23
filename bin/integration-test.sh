@@ -19,10 +19,20 @@ con_host_args=( -h $host --port $port )
 
 trap stop-dependencies HUP INT TRAP TERM
 
+start-dependencies-plain "$image"
+
+#########################################################################
+echo ">>>>>>>>>>>>>>>>>>>> Executing queries           <<<<<<<<<<<<<"
+#########################################################################
+set -x
+$cli "${con_host_args[@]}" query -e "invalid syntax" && {
+  echo "Should have failed due to invalid syntax"
+  exit 20
+}
+
 #########################################################################
 echo ">>>>>>>>>>>>>>>>>>>> TEST CONNECTION: PLAIN           <<<<<<<<<<<<<"
 #########################################################################
-start-dependencies-plain "$image"
 
 set -x
 $cli "${con_ip_args[@]}" test-connection

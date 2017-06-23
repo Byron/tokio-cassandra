@@ -1,12 +1,16 @@
 use clap;
 use linefeed;
 use super::super::args::ConnectionOptions;
-use super::super::errors::*;
+use super::super::errors::{ResultExt, Result, ErrorKind};
 use super::utils::{output_result, Demo};
 use super::shell;
-use tokio_cassandra::codec::primitives::{CqlFrom, CqlLongString};
+use tokio_cassandra::codec::primitives::{CqlFrom, CqlLongString, CqlConsistency};
+use tokio_cassandra::codec::request::{QueryMessage, Message};
+use tokio_cassandra::codec::response::ErrorMessage;
+use tokio_cassandra::tokio::messages::StreamingMessage;
+use tokio_service::Service;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 
 struct Options {
     file_content: String,
@@ -103,21 +107,29 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
     let (mut core, client) = opts.connect();
     core.run(client)
         .chain_err(|| format!("Failed to connect to {}", addr))
-        .and_then(|_client| {
+        .and_then(|client| {
             // FIXME: provide a consuming version stat consumes a string directly into the vec
             // and thus prevents an entirely unnecessary copy
-            let _query = CqlLongString::try_from(&query)?;
-
-            let demo = Demo::default();
-            output_result(
-                &demo,
-                args.value_of("output-format")
-                    .expect("clap to work")
-                    .parse()
-                    .expect("clap to work"),
-                args,
-            )?;
-            println!();
-            Ok(())
+            let query = CqlLongString::try_from(&query)?;
+            let req = Message::Query(QueryMessage {
+                query: query,
+                values: None,
+                consistency: CqlConsistency::All,
+                skip_metadata: false,
+                page_size: None,
+                paging_state: None,
+                serial_consistency: Some(CqlConsistency::All),
+                timestamp: None,
+            });
+            core.run(client.call(req)).map_err(Into::into).and_then(
+                |res| {
+                    match res {
+                        StreamingMessage::Error(ErrorMessage { text, code }) => Err(
+                            ErrorKind::CqlError(code, text).into(),
+                        ),
+                        _ => Ok(()),
+                    }
+                },
+            )
         })
 }
