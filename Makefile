@@ -60,9 +60,10 @@ $(VIRTUAL_ENV):
 
 $(CQLSH_EXECUTABLE): $(VIRTUAL_ENV)
 	$(VIRTUAL_ENV)/bin/pip install cqlsh
+	sed -i '' 's/DEFAULT_PROTOCOL_VERSION = 4/DEFAULT_PROTOCOL_VERSION = 3/g' $@
 
 cqlsh-execute: $(CQLSH_EXECUTABLE)
-	$(CQLSH_EXECUTABLE) -h localhost -e some-query
+	source $(VIRTUAL_ENV)/bin/activate && $(CQLSH_EXECUTABLE) localhost --cqlversion=3.2.1 -e "select * from system.batchlog"
 
 cli-execute:
 	cd cli && cargo run --all-features -- -h localhost query -o yaml -e cql-query
