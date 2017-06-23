@@ -37,7 +37,7 @@ version = "0.1"
 [dependencies.syntect]
 default-features = false
 optional = true
-version = "1.4.0"
+version = "1.6.0"
 features = ["parsing"]
 
 [dependencies.tokio-cassandra]
