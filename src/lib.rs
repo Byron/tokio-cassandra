@@ -11,7 +11,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-#[macro_use]
+#[cfg_attr(feature = "with-openssl", macro_use)]
 extern crate futures;
 extern crate tokio_core;
 extern crate tokio_service;

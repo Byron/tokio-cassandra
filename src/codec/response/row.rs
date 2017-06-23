@@ -1,4 +1,6 @@
-use codec::primitives::datatypes::{SerializableCell, CqlSerializable};
+use codec::primitives::datatypes::{CqlSerializable};
+#[cfg(feature = "with-serde")]
+use codec::primitives::datatypes::{SerializableCell};
 use codec::primitives::decode;
 use bytes::BytesMut;
 use codec::response::ColumnSpec;
