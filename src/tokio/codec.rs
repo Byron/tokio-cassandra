@@ -199,6 +199,7 @@ fn decode_complete_message_by_opcode(
         Authenticate => response::Message::Authenticate(response::AuthenticateMessage::decode(version, buf)?),
         AuthSuccess => response::Message::AuthSuccess(response::AuthSuccessMessage::decode(version, buf)?),
         Error => response::Message::Error(response::ErrorMessage::decode(version, buf)?),
-        _ => unimplemented!(),
+        OpCode::Result => response::Message::Result(response::ResultMessage::decode(version, buf)?),
+        _ => panic!("need to implement all opcodes returned in the header"),
     })
 }

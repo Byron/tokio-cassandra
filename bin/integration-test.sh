@@ -30,6 +30,11 @@ $cli "${con_host_args[@]}" query -e "invalid syntax" && {
   exit 20
 }
 
+$cli "${con_host_args[@]}" query -e "select * from system.batchlog" || {
+  echo "it should have successfully executed a valid query"
+  exit 21
+}
+
 #########################################################################
 echo ">>>>>>>>>>>>>>>>>>>> TEST CONNECTION: PLAIN           <<<<<<<<<<<<<"
 #########################################################################

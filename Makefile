@@ -63,10 +63,10 @@ $(CQLSH_EXECUTABLE): $(VIRTUAL_ENV)
 	sed -i '' 's/DEFAULT_PROTOCOL_VERSION = 4/DEFAULT_PROTOCOL_VERSION = 3/g' $@
 
 cqlsh-execute: $(CQLSH_EXECUTABLE)
-	source $(VIRTUAL_ENV)/bin/activate && $(CQLSH_EXECUTABLE) localhost --cqlversion=3.2.1 -e "select * from system.batchlog"
+	source $(VIRTUAL_ENV)/bin/activate && $(CQLSH_EXECUTABLE) localhost --cqlversion=3.2.1
 
 cli-execute:
-	cd cli && cargo run --all-features -- -h localhost query -o yaml -e cql-query
+	cd cli && cargo run --all-features -- -h localhost query -o yaml -e "select * from system.schema_columnfamilies"
 
 secrets:
 	$(MAKE) -C etc/docker-cassandra $@

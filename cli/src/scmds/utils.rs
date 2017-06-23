@@ -1,10 +1,11 @@
-use super::super::errors::*;
+use super::super::errors::Result;
 use tokio_cassandra::codec::header::Header;
 #[cfg(not(feature = "colors"))]
 use std::io::Write;
 use std::io;
 #[cfg(not(feature = "colors"))]
 use clap;
+use serde::Serialize;
 
 pub const THEME_NAMES: [&'static str; 3] = ["base16-ocean.dark", "Solarized (dark)", "Solarized (light)"];
 
@@ -44,7 +45,7 @@ arg_enum! {
     }
 }
 
-fn output_result_to_stdout_without_color(res: &Demo, fmt: OutputFormat) -> Result<()> {
+fn output_result_to_stdout_without_color<S: Serialize>(res: &S, fmt: OutputFormat) -> Result<()> {
     let s = io::stdout();
     let mut out = s.lock();
     match fmt {
@@ -55,7 +56,7 @@ fn output_result_to_stdout_without_color(res: &Demo, fmt: OutputFormat) -> Resul
 }
 
 #[cfg(not(feature = "colors"))]
-pub fn output_result(res: &Demo, fmt: OutputFormat, _args: &clap::ArgMatches) -> Result<()> {
+pub fn output_result<S: Serialize>(res: &S, fmt: OutputFormat, _args: &clap::ArgMatches) -> Result<()> {
     output_result_to_stdout_without_color(res, fmt)
 }
 
@@ -70,7 +71,8 @@ mod highlighting {
     use syntect::highlighting::ThemeSet;
     use syntect::parsing::SyntaxSet;
     use syntect::dumps::from_binary;
-    use super::{Demo, OutputFormat, Result, ColorMode, output_result_to_stdout_without_color};
+    use serde::Serialize;
+    use super::{OutputFormat, Result, ColorMode, output_result_to_stdout_without_color};
     use isatty;
 
     use clap;
@@ -118,7 +120,7 @@ mod highlighting {
         }
     }
 
-    pub fn output_result(res: &Demo, fmt: OutputFormat, args: &clap::ArgMatches) -> Result<()> {
+    pub fn output_result<S: Serialize>(res: &S, fmt: OutputFormat, args: &clap::ArgMatches) -> Result<()> {
         let use_color = {
             let color_mode = args.value_of("color")
                 .expect("clap to work")

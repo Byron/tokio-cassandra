@@ -2,7 +2,7 @@ use clap;
 use linefeed;
 use super::super::args::ConnectionOptions;
 use super::super::errors::{ResultExt, Result, ErrorKind};
-use super::utils::{output_result, Demo};
+use super::utils::output_result;
 use super::shell;
 use tokio_cassandra::codec::primitives::{CqlFrom, CqlLongString, CqlConsistency};
 use tokio_cassandra::codec::request::{QueryMessage, Message};
@@ -10,7 +10,7 @@ use tokio_cassandra::codec::response::ErrorMessage;
 use tokio_cassandra::tokio::messages::StreamingMessage;
 use tokio_service::Service;
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 
 struct Options {
     file_content: String,
@@ -127,6 +127,16 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
                         StreamingMessage::Error(ErrorMessage { text, code }) => Err(
                             ErrorKind::CqlError(code, text).into(),
                         ),
+                        StreamingMessage::Result(res) => {
+                            output_result(
+                                &res,
+                                args.value_of("output-format")
+                                    .expect("clap to work")
+                                    .parse()
+                                    .expect("clap to work"),
+                                args,
+                            )
+                        }
                         _ => Ok(()),
                     }
                 },

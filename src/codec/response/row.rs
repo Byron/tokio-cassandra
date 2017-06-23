@@ -1,13 +1,13 @@
-use codec::primitives::datatypes::{CqlSerializable};
+use codec::primitives::datatypes::CqlSerializable;
 #[cfg(feature = "with-serde")]
-use codec::primitives::datatypes::{SerializableCell};
+use codec::primitives::datatypes::SerializableCell;
 use codec::primitives::decode;
 use bytes::BytesMut;
 use codec::response::ColumnSpec;
 
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Row {
     raw_cols: Vec<Option<BytesMut>>,
 }
@@ -83,7 +83,7 @@ impl<'a> Iterator for RowIterator<'a> {
     }
 }
 
-pub struct SerializableRow<'a>(Row, &'a RowsMetadata);
+pub struct SerializableRow<'a>(pub Row, pub &'a RowsMetadata);
 
 #[cfg(feature = "with-serde")]
 impl<'a> ::serde::Serialize for SerializableRow<'a> {

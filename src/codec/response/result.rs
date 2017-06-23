@@ -1,6 +1,7 @@
 use codec::primitives::{CqlFrom, CqlString, CqlBytes};
 use codec::header::ProtocolVersion;
 use codec::primitives::decode;
+use codec::response::Row;
 use bytes::BytesMut;
 
 use super::*;
@@ -9,7 +10,24 @@ use super::*;
 
 #[derive(Debug)]
 pub enum ResultMessage {
-    Rows { rows: Vec<Row> },
+    // TODO: is an enum with a single variant necessary ? This could be ResultMessage { rows },
+    Rows { rows: Vec<Row>, meta: RowsMetadata },
+}
+
+#[cfg(feature = "with-serde")]
+impl<'a> ::serde::Serialize for ResultMessage {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+    where
+        S: ::serde::ser::Serializer,
+    {
+        // TODO: make SerializableRow shoudl take a row-reference. Vec copies are not as cheap as
+        // copying the byte buffer
+        match self {
+            &ResultMessage::Rows { ref rows, ref meta } => {
+                serializer.collect_seq(rows.iter().map(|r| SerializableRow(r.clone(), meta)))
+            }
+        }
+    }
 }
 
 impl CqlDecode<ResultMessage> for ResultMessage {
@@ -26,7 +44,10 @@ impl CqlDecode<ResultMessage> for ResultMessage {
                     v.push(row.expect("should not encounter unfinished row here"));
                     d = buf
                 }
-                ResultMessage::Rows { rows: v }
+                ResultMessage::Rows {
+                    rows: v,
+                    meta: rows_metadata,
+                }
             }
             _ => unimplemented!(),
         })
@@ -833,7 +854,7 @@ mod test {
         let buf = Vec::from(skip_header(&msg[..])).into();
         let msg = ResultMessage::decode(ProtocolVersion::Version3, buf).unwrap();
 
-        let ResultMessage::Rows { rows } = msg;
+        let ResultMessage::Rows { rows, .. } = msg;
         assert_eq!(1, rows.len());
     }
 }
