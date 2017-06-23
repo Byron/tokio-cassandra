@@ -27,9 +27,9 @@ impl Authenticator {
                         password: pwd,
                     } => {
                         Ok(Authenticator::PlainTextAuthenticator {
-                               username: user,
-                               password: pwd,
-                           })
+                            username: user,
+                            password: pwd,
+                        })
                     }
                 }
             }
@@ -40,9 +40,9 @@ impl Authenticator {
     pub fn encode_auth_response<'a>(&self, v: &mut BytesMut) -> () {
         match self {
             &Authenticator::PlainTextAuthenticator {
-                 username: ref user,
-                 password: ref pwd,
-             } => {
+                username: ref user,
+                password: ref pwd,
+            } => {
                 v.put_u8(0x00);
                 v.extend(user.as_bytes());
                 v.put_u8(0x00);
@@ -63,11 +63,13 @@ mod test {
     #[test]
     fn plain_text_auth() {
         let srv_auth = "org.apache.cassandra.auth.PasswordAuthenticator";
-        let auth = Authenticator::from_name(srv_auth,
-                                            Credentials::Login {
-                                                username: String::new(),
-                                                password: String::new(),
-                                            });
+        let auth = Authenticator::from_name(
+            srv_auth,
+            Credentials::Login {
+                username: String::new(),
+                password: String::new(),
+            },
+        );
 
         use super::Authenticator::*;
 
@@ -79,11 +81,13 @@ mod test {
     #[test]
     fn unknown_auth() {
         let srv_auth = "unknown";
-        let auth = Authenticator::from_name(srv_auth,
-                                            Credentials::Login {
-                                                username: String::new(),
-                                                password: String::new(),
-                                            });
+        let auth = Authenticator::from_name(
+            srv_auth,
+            Credentials::Login {
+                username: String::new(),
+                password: String::new(),
+            },
+        );
 
         assert!(auth.is_err());
     }
@@ -98,7 +102,24 @@ mod test {
         let mut encoded = BytesMut::with_capacity(64);
         auth.encode_auth_response(&mut encoded);
 
-        let expected = &[0u8, 97, 98, 99, 117, 115, 101, 114, 0, 97, 98, 99, 112, 97, 115, 115];
+        let expected = &[
+            0u8,
+            97,
+            98,
+            99,
+            117,
+            115,
+            101,
+            114,
+            0,
+            97,
+            98,
+            99,
+            112,
+            97,
+            115,
+            115,
+        ];
 
         assert_eq!(&encoded[..], &expected[..]);
     }

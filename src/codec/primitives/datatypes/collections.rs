@@ -72,7 +72,8 @@ impl<T: CqlSerializable + Debug> Debug for List<T> {
 #[cfg(feature = "with-serde")]
 impl<T: ::serde::Serialize + CqlSerializable> ::serde::Serialize for List<T> {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         use serde::ser::SerializeSeq;
 
@@ -87,8 +88,9 @@ impl<T: ::serde::Serialize + CqlSerializable> ::serde::Serialize for List<T> {
 // Bounds checking needs to be done in constructor
 #[derive(PartialEq, Eq)]
 pub struct Map<K, V>
-    where K: CqlSerializable,
-          V: CqlSerializable
+where
+    K: CqlSerializable,
+    V: CqlSerializable,
 {
     // FIXME: is this a good idea to use BytesMut here?
     // FIXME: Option is probably overengineered, since None is semantically the same as not existent here
@@ -97,8 +99,9 @@ pub struct Map<K, V>
 }
 
 impl<K, V> Debug for Map<K, V>
-    where V: CqlSerializable + Debug,
-          K: CqlSerializable + Debug
+where
+    V: CqlSerializable + Debug,
+    K: CqlSerializable + Debug,
 {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
 
@@ -129,8 +132,9 @@ impl<K, V> Debug for Map<K, V>
 }
 
 impl<K, V> Map<K, V>
-    where K: CqlSerializable,
-          V: CqlSerializable
+where
+    K: CqlSerializable,
+    V: CqlSerializable,
 {
     pub fn new() -> Self {
         Map {
@@ -149,8 +153,9 @@ impl<K, V> Map<K, V>
 
 
 impl<K, V> CqlSerializable for Map<K, V>
-    where K: CqlSerializable,
-          V: CqlSerializable
+where
+    K: CqlSerializable,
+    V: CqlSerializable,
 {
     fn serialize(&self, buf: &mut BytesMut) {
         ::codec::primitives::encode::int(self.inner.len() as BytesLen, buf);
@@ -188,17 +193,20 @@ impl<K, V> CqlSerializable for Map<K, V>
 
 #[cfg(feature = "with-serde")]
 impl<K, V> ::serde::Serialize for Map<K, V>
-    where K: CqlSerializable + ::serde::ser::Serialize,
-          V: CqlSerializable + ::serde::ser::Serialize
+where
+    K: CqlSerializable + ::serde::ser::Serialize,
+    V: CqlSerializable + ::serde::ser::Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         use serde::ser::SerializeMap;
         let mut map = serializer.serialize_map(Some(self.inner.len()))?;
         for (k, v) in &self.inner {
-            let key = K::deserialize(k.clone())
-                .map_err(|msg| ::serde::ser::Error::custom(format!("{}", msg)))?;
+            let key = K::deserialize(k.clone()).map_err(|msg| {
+                ::serde::ser::Error::custom(format!("{}", msg))
+            })?;
             map.serialize_entry(&key, v)?;
         }
         map.end()
@@ -280,7 +288,8 @@ impl<'a> Debug for GenericMap<'a> {
 #[cfg(feature = "with-serde")]
 impl<'a> ::serde::Serialize for GenericMap<'a> {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         use serde::ser::SerializeMap;
         let mut map = serializer.serialize_map(Some(self.inner.inner.len()))?;
@@ -298,14 +307,16 @@ impl<'a> ::serde::Serialize for GenericMap<'a> {
 // Bounds checking needs to be done in constructor
 #[derive(PartialEq, Eq)]
 pub struct Set<V>
-    where V: CqlSerializable
+where
+    V: CqlSerializable,
 {
     inner: HashSet<BytesMut>,
     p: PhantomData<V>,
 }
 
 impl<V> Debug for Set<V>
-    where V: CqlSerializable + Debug
+where
+    V: CqlSerializable + Debug,
 {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
         fmt.write_char('{')?;
@@ -328,7 +339,8 @@ impl<V> Debug for Set<V>
 
 
 impl<V> Set<V>
-    where V: CqlSerializable
+where
+    V: CqlSerializable,
 {
     pub fn new() -> Self {
         Set {
@@ -346,7 +358,8 @@ impl<V> Set<V>
 }
 
 impl<V> CqlSerializable for Set<V>
-    where V: CqlSerializable
+where
+    V: CqlSerializable,
 {
     fn serialize(&self, buf: &mut BytesMut) {
         // FIXME: bound checks
@@ -381,7 +394,8 @@ impl<V> CqlSerializable for Set<V>
 #[cfg(feature = "with-serde")]
 impl<T: ::serde::Serialize + CqlSerializable> ::serde::Serialize for Set<T> {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         use serde::ser::SerializeSeq;
 
@@ -485,7 +499,8 @@ impl<'a> Debug for Udt<'a> {
 #[cfg(feature = "with-serde")]
 impl<'a> ::serde::Serialize for Udt<'a> {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         use serde::ser::SerializeMap;
         let mut map = serializer.serialize_map(Some(self.inner.inner.len()))?;
@@ -541,7 +556,8 @@ impl<'a> Debug for Tuple<'a> {
 #[cfg(feature = "with-serde")]
 impl<'a> ::serde::Serialize for Tuple<'a> {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         use serde::ser::SerializeTuple;
         let mut tuple = serializer.serialize_tuple(self.inner.inner.len())?;
@@ -592,11 +608,11 @@ impl<'a> Debug for GenericList<'a> {
 #[cfg(feature = "with-serde")]
 impl<'a> ::serde::Serialize for GenericList<'a> {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         use serde::ser::SerializeSeq;
-        let mut seq = serializer
-            .serialize_seq(Some(self.inner.inner.len()))?;
+        let mut seq = serializer.serialize_seq(Some(self.inner.inner.len()))?;
 
         for e in &self.inner.inner {
             let cell = SerializableCell(self.def, e.clone());
@@ -616,18 +632,25 @@ mod test {
 
     #[test]
     fn list_debug() {
-        let x = List::try_from(vec![Some(Boolean::new(false)), Some(Boolean::new(true)), None]).unwrap();
+        let x = List::try_from(vec![
+            Some(Boolean::new(false)),
+            Some(Boolean::new(true)),
+            None,
+        ]).unwrap();
         assert_eq!("{false, true, NULL}", format!("{:?}", x));
     }
 
     #[test]
     fn genericlist_debug() {
         let ctype = ColumnType::Varchar;
-        let x = GenericList::new(RawList::try_from(vec![Some(vec![0x66, 0x67].into()),
-                                                        Some(vec![0x68, 0x69].into()),
-                                                        None])
-                                         .unwrap(),
-                                 &ctype);
+        let x = GenericList::new(
+            RawList::try_from(vec![
+                Some(vec![0x66, 0x67].into()),
+                Some(vec![0x68, 0x69].into()),
+                None,
+            ]).unwrap(),
+            &ctype,
+        );
         assert_eq!("[\"fg\", \"hi\", NULL]", format!("{:?}", x));
     }
 
@@ -646,42 +669,57 @@ mod test {
     #[test]
     fn genericset_debug() {
         let ctype = ColumnType::Varchar;
-        let x = GenericSet::new(RawSet::try_from(vec![Some(vec![0x66, 0x67].into()),
-                                                      Some(vec![0x68, 0x69].into()),
-                                                      None])
-                                        .unwrap(),
-                                &ctype);
+        let x = GenericSet::new(
+            RawSet::try_from(vec![
+                Some(vec![0x66, 0x67].into()),
+                Some(vec![0x68, 0x69].into()),
+                None,
+            ]).unwrap(),
+            &ctype,
+        );
         assert_eq!("[\"fg\", \"hi\", NULL]", format!("{:?}", x));
     }
 
     #[test]
     fn udt_debug() {
-        let udt = RawUdt::try_from(vec![Some(vec![0x66, 0x67, 0x68].into()),
-                                        None,
-                                        Some(vec![0x00, 0x00, 0x00, 0x50].into())])
-                .unwrap();
+        let udt = RawUdt::try_from(vec![
+            Some(vec![0x66, 0x67, 0x68].into()),
+            None,
+            Some(vec![0x00, 0x00, 0x00, 0x50].into()),
+        ]).unwrap();
         let def = UdtDefinition {
             keyspace: cql_string!("ks"),
             name: cql_string!("table1"),
-            fields: vec![UdtField(cql_string!("eid"), ColumnType::Varchar),
-                         UdtField(cql_string!("name"), ColumnType::Varchar),
-                         UdtField(cql_string!("sales"), ColumnType::Int)],
+            fields: vec![
+                UdtField(cql_string!("eid"), ColumnType::Varchar),
+                UdtField(cql_string!("name"), ColumnType::Varchar),
+                UdtField(cql_string!("sales"), ColumnType::Int),
+            ],
         };
 
-        assert_eq!("{eid: \"fgh\", name: NULL, sales: 80}",
-                   format!("{:?}", Udt::new(udt, &def)));
+        assert_eq!(
+            "{eid: \"fgh\", name: NULL, sales: 80}",
+            format!("{:?}", Udt::new(udt, &def))
+        );
     }
 
     #[test]
     fn tuple_debug() {
-        let tuple = RawTuple::try_from(vec![Some(vec![0x66, 0x67, 0x68].into()),
-                                            None,
-                                            Some(vec![0x00, 0x00, 0x00, 0x50].into())])
-                .unwrap();
-        let def = TupleDefinition(vec![ColumnType::Varchar, ColumnType::Varchar, ColumnType::Int]);
+        let tuple = RawTuple::try_from(vec![
+            Some(vec![0x66, 0x67, 0x68].into()),
+            None,
+            Some(vec![0x00, 0x00, 0x00, 0x50].into()),
+        ]).unwrap();
+        let def = TupleDefinition(vec![
+            ColumnType::Varchar,
+            ColumnType::Varchar,
+            ColumnType::Int,
+        ]);
 
-        assert_eq!("(\"fgh\", NULL, 80)",
-                   format!("{:?}", Tuple::new(tuple, &def)));
+        assert_eq!(
+            "(\"fgh\", NULL, 80)",
+            format!("{:?}", Tuple::new(tuple, &def))
+        );
     }
 
     #[test]
@@ -698,9 +736,20 @@ mod test {
     #[test]
     fn genericmap_debug() {
         let rm = RawMap {
-            inner: vec![(Some(vec![0x00, 0x00, 0x00, 0x01].into()), Some(vec![0x66, 0x67].into())),
-                        (Some(vec![0x00, 0x00, 0x00, 0x02].into()), Some(vec![0x68, 0x69].into())),
-                        (Some(vec![0x00, 0x00, 0x00, 0x03].into()), Some(vec![0x6a, 0x6b].into()))],
+            inner: vec![
+                (
+                    Some(vec![0x00, 0x00, 0x00, 0x01].into()),
+                    Some(vec![0x66, 0x67].into())
+                ),
+                (
+                    Some(vec![0x00, 0x00, 0x00, 0x02].into()),
+                    Some(vec![0x68, 0x69].into())
+                ),
+                (
+                    Some(vec![0x00, 0x00, 0x00, 0x03].into()),
+                    Some(vec![0x6a, 0x6b].into())
+                ),
+            ],
         };
         let (kt, vt) = (ColumnType::Int, ColumnType::Varchar);
         let gm = GenericMap::new(rm, &kt, &vt);
@@ -724,56 +773,78 @@ mod serde_testing {
 
     #[test]
     fn list_serde() {
-        let x = List::try_from(vec![Some(Boolean::new(false)), Some(Boolean::new(true)), None]).unwrap();
-        assert_ser_tokens(&x,
-                          &[Token::Seq{ len: Some( 3 ) },
-                            Token::Some,
-                            Token::Bool(false),
-                            Token::Some,
-                            Token::Bool(true),
-                            Token::None,
-                            Token::SeqEnd]);
+        let x = List::try_from(vec![
+            Some(Boolean::new(false)),
+            Some(Boolean::new(true)),
+            None,
+        ]).unwrap();
+        assert_ser_tokens(
+            &x,
+            &[
+                Token::Seq { len: Some(3) },
+                Token::Some,
+                Token::Bool(false),
+                Token::Some,
+                Token::Bool(true),
+                Token::None,
+                Token::SeqEnd,
+            ],
+        );
     }
 
     #[test]
     fn genericlist_serde() {
         let ctype = ColumnType::Varchar;
-        let x = GenericList::new(RawList::try_from(vec![Some(vec![0x66, 0x67].into()),
-                                                        Some(vec![0x68, 0x69].into()),
-                                                        None])
-                                         .unwrap(),
-                                 &ctype);
-        assert_ser_tokens(&x,
-                          &[Token::Seq{ len: Some(3) },
-                            Token::Some,
-                            Token::Str("fg"),
-                            Token::Some,
-                            Token::Str("hi"),
-                            Token::None,
-                            Token::SeqEnd]);
+        let x = GenericList::new(
+            RawList::try_from(vec![
+                Some(vec![0x66, 0x67].into()),
+                Some(vec![0x68, 0x69].into()),
+                None,
+            ]).unwrap(),
+            &ctype,
+        );
+        assert_ser_tokens(
+            &x,
+            &[
+                Token::Seq { len: Some(3) },
+                Token::Some,
+                Token::Str("fg"),
+                Token::Some,
+                Token::Str("hi"),
+                Token::None,
+                Token::SeqEnd,
+            ],
+        );
     }
 
     #[test]
     fn genericset_serde() {
         let ctype = ColumnType::Varchar;
-        let x = GenericSet::new(RawSet::try_from(vec![Some(vec![0x66, 0x67].into()),
-                                                      Some(vec![0x68, 0x69].into()),
-                                                      None])
-                                        .unwrap(),
-                                &ctype);
+        let x = GenericSet::new(
+            RawSet::try_from(vec![
+                Some(vec![0x66, 0x67].into()),
+                Some(vec![0x68, 0x69].into()),
+                None,
+            ]).unwrap(),
+            &ctype,
+        );
 
-        assert_ser_tokens(&x,
-                          &[Token::Seq{ len: Some( 3  )},
-                            Token::Some,
-                            Token::Str("fg"),
-                            Token::Some,
-                            Token::Str("hi"),
-                            Token::None,
-                            Token::SeqEnd]);
+        assert_ser_tokens(
+            &x,
+            &[
+                Token::Seq { len: Some(3) },
+                Token::Some,
+                Token::Str("fg"),
+                Token::Some,
+                Token::Str("hi"),
+                Token::None,
+                Token::SeqEnd,
+            ],
+        );
     }
 
     #[test]
-    fn set_serde() { 
+    fn set_serde() {
         let x = {
             let mut s = Set::new();
             s.insert(Boolean::new(false));
@@ -781,145 +852,192 @@ mod serde_testing {
             s
         };
 
-        let r1 = panic::catch_unwind(|| { 
-assert_ser_tokens(&x,
-                              &[Token::Seq{ len:Some ( 2  )},
-                                Token::Bool(false),
-                                Token::Bool(true),
-                                Token::SeqEnd]);
-    });
-
-        let r2 = panic::catch_unwind(|| {
-            assert_ser_tokens(&x,
-                              &[Token::Seq{ len: Some( 2  )},
-                                Token::Bool(true),
-                                Token::Bool(false),
-                                Token::SeqEnd]);
-        });
-
-        assert!(r1.is_ok() || r2.is_ok());
- 
-
-
-    #[test]
-    fn udt_serde() {
-        let udt = RawUdt::try_from(vec![Some(vec![0x66, 0x67, 0x68].into()),
-                                        None,
-                                        Some(vec![0x00, 0x00, 0x00, 0x50].into())])
-                .unwrap();
-        let def = UdtDefinition {
-            keyspace: cql_string!("ks"),
-            name: cql_string!("table1"),
-            fields: vec![UdtField(cql_string!("eid"), ColumnType::Varchar),
-                         UdtField(cql_string!("name"), ColumnType::Varchar),
-                         UdtField(cql_string!("sales"), ColumnType::Int)],
-        };
-
-        assert_ser_tokens(&Udt::new(udt, &def),
-                          &[Token::Map{ len: Some(3) },
-
-                            Token::Str("eid"),
-                            Token::Some,
-                            Token::Str("fgh"),
-
-                            Token::Str("name"),
-                            Token::None,
-
-                            Token::Str("sales"),
-                            Token::Some,
-                            Token::I32(80),
-
-                            Token::MapEnd]);
-    }
-
-    #[test]
-    fn tuple_serde() {
-        let tuple = RawTuple::try_from(vec![Some(vec![0x66, 0x67, 0x68].into()),
-                                            None,
-                                            Some(vec![0x00, 0x00, 0x00, 0x50].into())])
-                .unwrap();
-        let def = TupleDefinition(vec![ColumnType::Varchar, ColumnType::Varchar, ColumnType::Int]);
-
-        assert_ser_tokens(&Tuple::new(tuple, &def),
-                          &[Token::Tuple{ len: 3 },
-                            Token::Some,
-                            Token::Str("fgh"),
-                            Token::None,
-                            Token::Some,
-                            Token::I32(80),
-                            Token::TupleEnd]);
-    }
-
-    #[test]
-    fn map_serde() {
-        let m = {
-            let mut map: Map<Int, Varchar> = Map::new();
-            map.insert(Int::new(1), Some(Varchar::try_from("fg").unwrap()));
-            map.insert(Int::new(2), Some(Varchar::try_from("hi").unwrap()));
-            map
-        };
-
         let r1 = panic::catch_unwind(|| {
-            assert_ser_tokens(&m,
-                              &[Token::Map{ len: Some(2) },
-                              
-                                Token::I32(1),
-                            Token::Some,
-                                Token::Str("fg"),
-
-                                Token::I32(2),
-                            Token::Some,
-                                Token::Str("hi"),
-
-                                Token::MapEnd]);
+            assert_ser_tokens(
+                &x,
+                &[
+                    Token::Seq { len: Some(2) },
+                    Token::Bool(false),
+                    Token::Bool(true),
+                    Token::SeqEnd,
+                ],
+            );
         });
 
         let r2 = panic::catch_unwind(|| {
-            assert_ser_tokens(&m,
-                              &[Token::Map{ len: Some(2) },
-
-                                Token::I32(2),
-                                Token::Some,
-                                Token::Str("hi"),
-
-                                Token::I32(1),
-                                Token::Some,
-                                Token::Str("fg"),
-
-                                Token::MapEnd]);
+            assert_ser_tokens(
+                &x,
+                &[
+                    Token::Seq { len: Some(2) },
+                    Token::Bool(true),
+                    Token::Bool(false),
+                    Token::SeqEnd,
+                ],
+            );
         });
 
         assert!(r1.is_ok() || r2.is_ok());
+
+
+
+        #[test]
+        fn udt_serde() {
+            let udt = RawUdt::try_from(vec![
+                Some(vec![0x66, 0x67, 0x68].into()),
+                None,
+                Some(vec![0x00, 0x00, 0x00, 0x50].into()),
+            ]).unwrap();
+            let def = UdtDefinition {
+                keyspace: cql_string!("ks"),
+                name: cql_string!("table1"),
+                fields: vec![
+                    UdtField(cql_string!("eid"), ColumnType::Varchar),
+                    UdtField(cql_string!("name"), ColumnType::Varchar),
+                    UdtField(cql_string!("sales"), ColumnType::Int),
+                ],
+            };
+
+            assert_ser_tokens(
+                &Udt::new(udt, &def),
+                &[
+                    Token::Map { len: Some(3) },
+
+                    Token::Str("eid"),
+                    Token::Some,
+                    Token::Str("fgh"),
+
+                    Token::Str("name"),
+                    Token::None,
+
+                    Token::Str("sales"),
+                    Token::Some,
+                    Token::I32(80),
+
+                    Token::MapEnd,
+                ],
+            );
+        }
+
+        #[test]
+        fn tuple_serde() {
+            let tuple = RawTuple::try_from(vec![
+                Some(vec![0x66, 0x67, 0x68].into()),
+                None,
+                Some(vec![0x00, 0x00, 0x00, 0x50].into()),
+            ]).unwrap();
+            let def = TupleDefinition(vec![
+                ColumnType::Varchar,
+                ColumnType::Varchar,
+                ColumnType::Int,
+            ]);
+
+            assert_ser_tokens(
+                &Tuple::new(tuple, &def),
+                &[
+                    Token::Tuple { len: 3 },
+                    Token::Some,
+                    Token::Str("fgh"),
+                    Token::None,
+                    Token::Some,
+                    Token::I32(80),
+                    Token::TupleEnd,
+                ],
+            );
+        }
+
+        #[test]
+        fn map_serde() {
+            let m = {
+                let mut map: Map<Int, Varchar> = Map::new();
+                map.insert(Int::new(1), Some(Varchar::try_from("fg").unwrap()));
+                map.insert(Int::new(2), Some(Varchar::try_from("hi").unwrap()));
+                map
+            };
+
+            let r1 = panic::catch_unwind(|| {
+                assert_ser_tokens(
+                    &m,
+                    &[
+                        Token::Map { len: Some(2) },
+
+                        Token::I32(1),
+                        Token::Some,
+                        Token::Str("fg"),
+
+                        Token::I32(2),
+                        Token::Some,
+                        Token::Str("hi"),
+
+                        Token::MapEnd,
+                    ],
+                );
+            });
+
+            let r2 = panic::catch_unwind(|| {
+                assert_ser_tokens(
+                    &m,
+                    &[
+                        Token::Map { len: Some(2) },
+
+                        Token::I32(2),
+                        Token::Some,
+                        Token::Str("hi"),
+
+                        Token::I32(1),
+                        Token::Some,
+                        Token::Str("fg"),
+
+                        Token::MapEnd,
+                    ],
+                );
+            });
+
+            assert!(r1.is_ok() || r2.is_ok());
+        }
+
+        #[test]
+        fn genericmap_serde() {
+            let rm = RawMap {
+                inner: vec![
+                    (
+                        Some(vec![0x00, 0x00, 0x00, 0x01].into()),
+                        Some(vec![0x66, 0x67].into())
+                    ),
+                    (
+                        Some(vec![0x00, 0x00, 0x00, 0x02].into()),
+                        Some(vec![0x68, 0x69].into())
+                    ),
+                    (
+                        Some(vec![0x00, 0x00, 0x00, 0x03].into()),
+                        Some(vec![0x6a, 0x6b].into())
+                    ),
+                ],
+            };
+            let (kt, vt) = (ColumnType::Int, ColumnType::Varchar);
+            let gm = GenericMap::new(rm, &kt, &vt);
+            assert_ser_tokens(
+                &gm,
+                &[
+                    Token::Map { len: Some(3) },
+
+                    Token::Some,
+                    Token::I32(1),
+                    Token::Some,
+                    Token::Str("fg"),
+
+                    Token::Some,
+                    Token::I32(2),
+                    Token::Some,
+                    Token::Str("hi"),
+
+                    Token::Some,
+                    Token::I32(3),
+                    Token::Some,
+                    Token::Str("jk"),
+
+                    Token::MapEnd,
+                ],
+            );
+        }
     }
-
-    #[test]
-    fn genericmap_serde() {
-        let rm = RawMap {
-            inner: vec![(Some(vec![0x00, 0x00, 0x00, 0x01].into()), Some(vec![0x66, 0x67].into())),
-                        (Some(vec![0x00, 0x00, 0x00, 0x02].into()), Some(vec![0x68, 0x69].into())),
-                        (Some(vec![0x00, 0x00, 0x00, 0x03].into()), Some(vec![0x6a, 0x6b].into()))],
-        };
-        let (kt, vt) = (ColumnType::Int, ColumnType::Varchar);
-        let gm = GenericMap::new(rm, &kt, &vt);
-        assert_ser_tokens(&gm,
-                          &[Token::Map{ len: Some(3) },
-
-                            Token::Some,
-                            Token::I32(1),
-                            Token::Some,
-                            Token::Str("fg"),
-
-                            Token::Some,
-                            Token::I32(2),
-                            Token::Some,
-                            Token::Str("hi"),
-
-                            Token::Some,
-                            Token::I32(3),
-                            Token::Some,
-                            Token::Str("jk"),
-
-                            Token::MapEnd]);
-    }
-}
 }

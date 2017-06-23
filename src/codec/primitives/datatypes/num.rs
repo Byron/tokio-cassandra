@@ -42,7 +42,8 @@ impl Debug for Bigint {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Bigint {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_i64(self.inner)
     }
@@ -116,7 +117,8 @@ impl ::std::fmt::Display for Varint {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Varint {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }
@@ -161,7 +163,8 @@ impl CqlSerializable for Double {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Double {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_f64(self.inner)
     }
@@ -206,7 +209,8 @@ impl CqlSerializable for Float {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Float {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_f32(self.inner)
     }
@@ -251,7 +255,8 @@ impl CqlSerializable for Int {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Int {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_i32(self.inner)
     }
@@ -282,9 +287,9 @@ impl CqlSerializable for Decimal {
         let (data, scale) = ::codec::primitives::decode::int(data)?;
         let unscaled = Varint::deserialize(data)?;
         Ok(Decimal {
-               scale: scale,
-               unscaled: unscaled,
-           })
+            scale: scale,
+            unscaled: unscaled,
+        })
     }
 
     fn bytes_len(&self) -> Option<BytesLen> {
@@ -319,7 +324,8 @@ impl Debug for Decimal {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Decimal {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }

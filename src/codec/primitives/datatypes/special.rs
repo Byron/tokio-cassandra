@@ -26,14 +26,31 @@ impl CqlSerializable for Inet {
         }
 
         Ok(match data.len() {
-               4 => Inet::Ipv4(Ipv4Addr::from([data[0], data[1], data[2], data[3]])),
-               16 => {
-                   Inet::Ipv6(Ipv6Addr::from([data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
-                                              data[8], data[9], data[10], data[11], data[12], data[13], data[14],
-                                              data[15]]))
-               }
-               _ => return Err(ErrorKind::Incomplete.into()),
-           })
+            4 => Inet::Ipv4(Ipv4Addr::from([data[0], data[1], data[2], data[3]])),
+            16 => {
+                Inet::Ipv6(Ipv6Addr::from(
+                    [
+                        data[0],
+                        data[1],
+                        data[2],
+                        data[3],
+                        data[4],
+                        data[5],
+                        data[6],
+                        data[7],
+                        data[8],
+                        data[9],
+                        data[10],
+                        data[11],
+                        data[12],
+                        data[13],
+                        data[14],
+                        data[15],
+                    ],
+                ))
+            }
+            _ => return Err(ErrorKind::Incomplete.into()),
+        })
     }
 
     fn bytes_len(&self) -> Option<BytesLen> {
@@ -56,7 +73,8 @@ impl Debug for Inet {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Inet {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }
@@ -102,7 +120,8 @@ impl Debug for Timestamp {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Timestamp {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }
@@ -129,8 +148,24 @@ impl CqlSerializable for Uuid {
         if data.len() != 16 {
             return Err(ErrorKind::Incomplete.into());
         }
-        let arr = [data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10],
-                   data[11], data[12], data[13], data[14], data[15]];
+        let arr = [
+            data[0],
+            data[1],
+            data[2],
+            data[3],
+            data[4],
+            data[5],
+            data[6],
+            data[7],
+            data[8],
+            data[9],
+            data[10],
+            data[11],
+            data[12],
+            data[13],
+            data[14],
+            data[15],
+        ];
         Ok(Uuid { inner: arr })
     }
 
@@ -141,24 +176,26 @@ impl CqlSerializable for Uuid {
 
 impl Debug for Uuid {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        let s = format!("{:02X}{:02X}{:02X}{:02X}-{:02X}{:02X}-{:02X}{:02X}\
+        let s = format!(
+            "{:02X}{:02X}{:02X}{:02X}-{:02X}{:02X}-{:02X}{:02X}\
                         -{:02X}{:02X}-{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}",
-                        self.inner[0],
-                        self.inner[1],
-                        self.inner[2],
-                        self.inner[3],
-                        self.inner[4],
-                        self.inner[5],
-                        self.inner[6],
-                        self.inner[7],
-                        self.inner[8],
-                        self.inner[9],
-                        self.inner[10],
-                        self.inner[11],
-                        self.inner[12],
-                        self.inner[13],
-                        self.inner[14],
-                        self.inner[15]);
+            self.inner[0],
+            self.inner[1],
+            self.inner[2],
+            self.inner[3],
+            self.inner[4],
+            self.inner[5],
+            self.inner[6],
+            self.inner[7],
+            self.inner[8],
+            self.inner[9],
+            self.inner[10],
+            self.inner[11],
+            self.inner[12],
+            self.inner[13],
+            self.inner[14],
+            self.inner[15]
+        );
         ::std::fmt::Display::fmt(&s, fmt)
     }
 }
@@ -166,7 +203,8 @@ impl Debug for Uuid {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Uuid {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }
@@ -199,15 +237,19 @@ mod test {
     #[test]
     fn uuid_debug() {
         let uuid = Uuid::new([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        assert_eq!("00010203-0405-0607-0809-0A0B0C0D0E0F",
-                   format!("{:?}", uuid));
+        assert_eq!(
+            "00010203-0405-0607-0809-0A0B0C0D0E0F",
+            format!("{:?}", uuid)
+        );
     }
 
     #[test]
     fn timeuuid_debug() {
         let uuid = TimeUuid::new([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        assert_eq!("00010203-0405-0607-0809-0A0B0C0D0E0F",
-                   format!("{:?}", uuid));
+        assert_eq!(
+            "00010203-0405-0607-0809-0A0B0C0D0E0F",
+            format!("{:?}", uuid)
+        );
     }
 }
 

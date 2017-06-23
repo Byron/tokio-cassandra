@@ -29,15 +29,16 @@ error_chain! {
 }
 
 pub trait CqlFrom<C, V>
-    where V: HasLength
+where
+    V: HasLength,
 {
     fn try_from(s: V) -> Result<C> {
         match s.length() > u16::max_value() as usize {
             true => Err(ErrorKind::MaximumLengthExceeded(s.length()).into()),
             false => {
                 Ok({
-                       unsafe { Self::unchecked_from(s) }
-                   })
+                    unsafe { Self::unchecked_from(s) }
+                })
             }
         }
     }
@@ -68,7 +69,8 @@ impl HasLength for BytesMut {
 }
 
 impl<T, U> HasLength for HashMap<T, U>
-    where T: ::std::cmp::Eq + Hash
+where
+    T: ::std::cmp::Eq + Hash,
 {
     fn length(&self) -> usize {
         self.len()
@@ -137,9 +139,10 @@ mod test {
 
     #[test]
     fn string_map() {
-        let sm = CqlStringMap::try_from_iter(vec![(cql_string!("a"), cql_string!("av")),
-                                                  (cql_string!("a"), cql_string!("av"))])
-                .unwrap();
+        let sm = CqlStringMap::try_from_iter(vec![
+            (cql_string!("a"), cql_string!("av")),
+            (cql_string!("a"), cql_string!("av")),
+        ]).unwrap();
 
         let mut buf = BytesMut::with_capacity(64);
         encode::string_map(&sm, &mut buf);

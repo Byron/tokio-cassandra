@@ -85,15 +85,17 @@ impl FromStr for Pk12WithOptionalPassword {
                     .chain_err(|| format!("Failed to open file at '{}'", fp))?
                     .read_to_end(&mut buf)?;
                 Ok(Pk12WithOptionalPassword {
-                       content: buf,
-                       password: str::from_utf8(password)
-                           .expect("str -> bytes -> str to work")
-                           .into(),
-                   })
+                    content: buf,
+                    password: str::from_utf8(password)
+                        .expect("str -> bytes -> str to work")
+                        .into(),
+                })
             }
             _ => {
-                bail!(ErrorKind::Pk12PathFormat(format!("Need two tokens formatted like <path>:<password>, got '{}'",
-                                                        s)))
+                bail!(ErrorKind::Pk12PathFormat(format!(
+                    "Need two tokens formatted like <path>:<password>, got '{}'",
+                    s
+                )))
             }
         }
     }
@@ -103,110 +105,128 @@ impl ConnectionOptions {
     pub fn try_from(args: &clap::ArgMatches) -> Result<ConnectionOptions> {
         let host = args.value_of("host").expect("clap to work");
         let port = args.value_of("port").expect("clap to work");
-        let port: u16 = port.parse()
-            .chain_err(|| format!("Port '{}' could not be parsed as number", port))?;
+        let port: u16 = port.parse().chain_err(|| {
+            format!("Port '{}' could not be parsed as number", port)
+        })?;
         Ok(ConnectionOptions {
-               host: host.into(),
-               port: port,
-               client: Client {
-                   protocol: CqlProto {
-                       version: args.value_of("protocol-version")
-                           .expect("clap to work")
-                           .parse::<CliProtoVersion>()
-                           .expect("clap to work")
-                           .into(),
-                       debug: match (args.value_of("debug-dump-encoded-frames-into-directory"),
-                                     args.value_of("debug-dump-decoded-frames-into-directory")) {
-                           (None, None) => None,
-                           (encode_path, decode_path) => {
-                               Some(CqlCodecDebuggingOptions {
-                                        dump_encoded_frames_into: encode_path.map(Into::into),
-                                        dump_decoded_frames_into: decode_path.map(Into::into),
-                                        ..Default::default()
-                                    })
-                           }
-                       },
-                   },
-               },
-               addr: {
-                   net::IpAddr::from_str(host)
-                       .or_else(|parse_err| {
-                lookup_host(host)
-                    .map_err(|err| {
-                                 Error::from_kind(format!("Failed to parse '{}' with error: {:?} and could not lookup \
+            host: host.into(),
+            port: port,
+            client: Client {
+                protocol: CqlProto {
+                    version: args.value_of("protocol-version")
+                        .expect("clap to work")
+                        .parse::<CliProtoVersion>()
+                        .expect("clap to work")
+                        .into(),
+                    debug: match (
+                        args.value_of("debug-dump-encoded-frames-into-directory"),
+                        args.value_of("debug-dump-decoded-frames-into-directory"),
+                    ) {
+                        (None, None) => None,
+                        (encode_path, decode_path) => {
+                            Some(CqlCodecDebuggingOptions {
+                                dump_encoded_frames_into: encode_path.map(Into::into),
+                                dump_decoded_frames_into: decode_path.map(Into::into),
+                                ..Default::default()
+                            })
+                        }
+                    },
+                },
+            },
+            addr: {
+                net::IpAddr::from_str(host)
+                    .or_else(|parse_err| {
+                        lookup_host(host)
+                            .map_err(|err| {
+                                Error::from_kind(
+                                    format!(
+                                        "Failed to parse '{}' with error: {:?} and could not lookup \
                                                           host with error {:?}",
-                                                          host,
-                                                          parse_err,
-                                                          err)
-                                                          .into())
-                             })
-                    .and_then(|mut it| {
-                        it.next()
-                            .ok_or_else(|| {
-                                            Error::from_kind(format!("Not a single IP found for host '{}', even though \
+                                        host,
+                                        parse_err,
+                                        err
+                                    ).into(),
+                                )
+                            })
+                            .and_then(|mut it| {
+                                it.next()
+                                    .ok_or_else(|| {
+                                        Error::from_kind(
+                                            format!(
+                                                "Not a single IP found for host '{}', even though \
                                                                   lookup succeeded",
-                                                                     host)
-                                                                     .into())
-                                        })
-                            .and_then(|res| res.map_err(Into::into))
+                                                host
+                                            ).into(),
+                                        )
+                                    })
+                                    .and_then(|res| res.map_err(Into::into))
+                            })
                     })
-            })
-                       .map(|ip| SocketAddr::new(ip, port))?
-               },
-               options: client::ConnectOptions {
-                   tls: match (args.is_present("tls"), args.value_of("cert"), args.value_of("ca-file")) {
-                       (true, cert, ca_file) |
-                       (false, cert @ Some(_), ca_file) |
-                       (false, cert, ca_file @ Some(_)) => {
-                           Some(ssl::Options {
-                                    domain: match net::IpAddr::from_str(host) {
-                                        Ok(ip) => {
-                                            bail!(format!("When using TLS, the host name must not be an IP address, \
+                    .map(|ip| SocketAddr::new(ip, port))?
+            },
+            options: client::ConnectOptions {
+                tls: match (
+                    args.is_present("tls"),
+                    args.value_of("cert"),
+                    args.value_of("ca-file"),
+                ) {
+                    (true, cert, ca_file) |
+                    (false, cert @ Some(_), ca_file) |
+                    (false, cert, ca_file @ Some(_)) => {
+                        Some(ssl::Options {
+                            domain: match net::IpAddr::from_str(host) {
+                                Ok(ip) => {
+                                    bail!(format!(
+                                        "When using TLS, the host name must not be an IP address, \
                                                            got {}",
-                                                          ip))
-                                        }
-                                        Err(_) => host.into(),
-                                    },
+                                        ip
+                                    ))
+                                }
+                                Err(_) => host.into(),
+                            },
 
-                                    configuration: ssl::Configuration::Predefined(ssl::EasyConfiguration {
-                                                                                      credentials: match cert {
-                                                                                          Some(s) => {
-                                        Some(Pk12WithOptionalPassword::from_str(s)
-                                            .chain_err(|| {
-                                                format!("Failed to interpret Pk12 file with password from '{}'", s)
-                                            })?
-                                            .into())
+                            configuration: ssl::Configuration::Predefined(ssl::EasyConfiguration {
+                                credentials: match cert {
+                                    Some(s) => {
+                                        Some(
+                                            Pk12WithOptionalPassword::from_str(s)
+                                                .chain_err(|| {
+                                                    format!("Failed to interpret Pk12 file with password from '{}'", s)
+                                                })?
+                                                .into(),
+                                        )
                                     }
-                                                                                          None => None,
-                                                                                      },
-                                                                                      certificate_authority_file:
-                                                                                          ca_file.map(String::from),
-                                                                                  }),
-                                })
-                       }
-                       _ => None,
-                   },
-                   creds: match (args.value_of("user"), args.value_of("password")) {
-                       (Some(usr), Some(pwd)) => {
-                           Some(Credentials::Login {
-                                    username: usr.to_string(),
-                                    password: pwd.to_string(),
-                                })
-                       }
-                       _ => None,
-                   },
-                   desired_cql_version: match args.value_of("cql-version") {
-                       None => None,
-                       Some(s) => {
-                        Some(semver::Version::parse(s).chain_err(|| {
-                                format!("Could not parse desired cql version as semantic version: '{}'",
-                                        s)
-                            })?)
+                                    None => None,
+                                },
+                                certificate_authority_file: ca_file.map(String::from),
+                            }),
+                        })
                     }
-                   },
-                   ..Default::default()
-               },
-           })
+                    _ => None,
+                },
+                creds: match (args.value_of("user"), args.value_of("password")) {
+                    (Some(usr), Some(pwd)) => {
+                        Some(Credentials::Login {
+                            username: usr.to_string(),
+                            password: pwd.to_string(),
+                        })
+                    }
+                    _ => None,
+                },
+                desired_cql_version: match args.value_of("cql-version") {
+                    None => None,
+                    Some(s) => {
+                        Some(semver::Version::parse(s).chain_err(|| {
+                            format!(
+                                "Could not parse desired cql version as semantic version: '{}'",
+                                s
+                            )
+                        })?)
+                    }
+                },
+                ..Default::default()
+            },
+        })
     }
 
     pub fn connect(self) -> (Core, Box<Future<Item = ClientHandle, Error = TokioCassandraError>>) {

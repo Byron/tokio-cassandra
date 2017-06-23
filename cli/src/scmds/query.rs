@@ -18,28 +18,27 @@ struct Options {
 impl Options {
     fn try_from(args: &clap::ArgMatches) -> Result<Options> {
         Ok(Options {
-               interactive: args.is_present("interactive"),
-               file_content: match args.value_of("file") {
-                   None => String::new(),
-                   Some(fp) => {
-            let s = io::stdin();
-            let mut f: Box<Read> = match fp {
-                "-" => Box::new(s.lock()),
-                _ => {
-                    Box::new(File::open(&fp)
-                                 .chain_err(|| format!("Failed to open CQL file at '{}' for reading", fp))?)
+            interactive: args.is_present("interactive"),
+            file_content: match args.value_of("file") {
+                None => String::new(),
+                Some(fp) => {
+                    let s = io::stdin();
+                    let mut f: Box<Read> = match fp {
+                        "-" => Box::new(s.lock()),
+                        _ => {
+                            Box::new(File::open(&fp).chain_err(|| {
+                                format!("Failed to open CQL file at '{}' for reading", fp)
+                            })?)
+                        }
+                    };
+                    let mut buf = String::new();
+                    f.read_to_string(&mut buf)?;
+                    buf
                 }
-            };
-            let mut buf = String::new();
-            f.read_to_string(&mut buf)?;
-            buf
-        }
-               },
-               execute: args.value_of("execute")
-                   .map(Into::into)
-                   .unwrap_or_default(),
-               keyspace: args.value_of("keyspace").map(Into::into),
-           })
+            },
+            execute: args.value_of("execute").map(Into::into).unwrap_or_default(),
+            keyspace: args.value_of("keyspace").map(Into::into),
+        })
     }
 
     fn into_query_string(self) -> Option<String> {
@@ -110,12 +109,14 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
             let _query = CqlLongString::try_from(&query)?;
 
             let demo = Demo::default();
-            output_result(&demo,
-                          args.value_of("output-format")
-                              .expect("clap to work")
-                              .parse()
-                              .expect("clap to work"),
-                          args)?;
+            output_result(
+                &demo,
+                args.value_of("output-format")
+                    .expect("clap to work")
+                    .parse()
+                    .expect("clap to work"),
+                args,
+            )?;
             println!();
             Ok(())
         })

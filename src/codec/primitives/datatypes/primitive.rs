@@ -49,7 +49,8 @@ impl Debug for Boolean {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Boolean {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_bool(self.inner)
     }

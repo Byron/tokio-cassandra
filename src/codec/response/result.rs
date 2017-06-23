@@ -18,18 +18,18 @@ impl CqlDecode<ResultMessage> for ResultMessage {
         let result_header = result_header.expect("should have all bytes when using full body decode");
 
         Ok(match result_header {
-               ResultHeader::Rows(rows_metadata) => {
-            let mut v = Vec::new();
-            let mut d = buf;
-            for _ in 0..rows_metadata.rows_count {
-                let (buf, row) = Row::decode(d, &rows_metadata)?;
-                v.push(row.expect("should not encounter unfinished row here"));
-                d = buf
+            ResultHeader::Rows(rows_metadata) => {
+                let mut v = Vec::new();
+                let mut d = buf;
+                for _ in 0..rows_metadata.rows_count {
+                    let (buf, row) = Row::decode(d, &rows_metadata)?;
+                    v.push(row.expect("should not encounter unfinished row here"));
+                    d = buf
+                }
+                ResultMessage::Rows { rows: v }
             }
-            ResultMessage::Rows { rows: v }
-        }
-               _ => unimplemented!(),
-           })
+            _ => unimplemented!(),
+        })
     }
 }
 
@@ -108,10 +108,10 @@ impl ColumnSpec {
     pub fn colname(&self) -> String {
         match self {
             &ColumnSpec::WithoutGlobalSpec {
-                 ref name,
-                 table_spec: ref tspec,
-                 ..
-             } => format!("{}.{}", tspec.table, name),
+                ref name,
+                table_spec: ref tspec,
+                ..
+            } => format!("{}.{}", tspec.table, name),
             &ColumnSpec::WithGlobalSpec { ref name, .. } => format!("{}", name),
         }
     }
@@ -159,94 +159,100 @@ pub struct UdtField(pub CqlString, pub ColumnType);
 impl ColumnType {
     pub fn decode(buf: BytesMut) -> decode::ParseResult<Option<ColumnType>> {
         Ok(if buf.len() < 2 {
-               (buf, None)
-           } else {
-               let (buf, id) = decode::short(buf)?;
-               match id {
-                   0x0000 => {
-                let (buf, s) = decode::string(buf)?;
-                (buf, Some(ColumnType::Custom(s)))
-            }
-                   0x0001 => (buf, Some(ColumnType::Ascii)),
-                   0x0002 => (buf, Some(ColumnType::Bigint)),
-                   0x0003 => (buf, Some(ColumnType::Blob)),
-                   0x0004 => (buf, Some(ColumnType::Boolean)),
-                   0x0005 => (buf, Some(ColumnType::Counter)),
-                   0x0006 => (buf, Some(ColumnType::Decimal)),
-                   0x0007 => (buf, Some(ColumnType::Double)),
-                   0x0008 => (buf, Some(ColumnType::Float)),
-                   0x0009 => (buf, Some(ColumnType::Int)),
-                   0x000B => (buf, Some(ColumnType::Timestamp)),
-                   0x000C => (buf, Some(ColumnType::Uuid)),
-                   0x000D => (buf, Some(ColumnType::Varchar)),
-                   0x000E => (buf, Some(ColumnType::Varint)),
-                   0x000F => (buf, Some(ColumnType::Timeuuid)),
-                   0x0010 => (buf, Some(ColumnType::Inet)),
-                   0x0020 => {
-                let (buf, inner) = Self::decode(buf)?;
-                (buf, inner.map(|v| ColumnType::List(Box::new(v))))
-            }
-                   0x0021 => {
-                let (buf, inner_key) = Self::decode(buf)?;
-                let (buf, inner_value) = Self::decode(buf)?;
-                let map = inner_key.and_then(|k| inner_value.map(|v| (ColumnType::Map(Box::new(k), Box::new(v)))));
-                (buf, map)
-            }
-                   0x0022 => {
-                let (buf, inner) = Self::decode(buf)?;
-                (buf, inner.map(|v| ColumnType::Set(Box::new(v))))
-            }
-                   0x0030 => {
-                let (buf, ks) = decode::string(buf)?;
-                let (buf, name) = decode::string(buf)?;
-                let (buf, n) = decode::short(buf)?;
-
-                let mut fields = Vec::new();
-                let mut b = buf;
-                for _ in 0..n {
-                    let (buf, fname) = decode::string(b)?;
-                    let (buf, ctype) = Self::decode(buf)?;
-                    if let Some(ctype) = ctype {
-                        fields.push(UdtField(fname, ctype));
-                    } else {
-                        return Ok((buf, None));
-                    }
-                    b = buf
+            (buf, None)
+        } else {
+            let (buf, id) = decode::short(buf)?;
+            match id {
+                0x0000 => {
+                    let (buf, s) = decode::string(buf)?;
+                    (buf, Some(ColumnType::Custom(s)))
                 }
-                (b,
-                 Some(ColumnType::Udt(UdtDefinition {
-                                          keyspace: ks,
-                                          name: name,
-                                          fields: fields,
-                                      })))
-            }
-
-                   0x0031 => {
-                let (buf, n) = decode::short(buf)?;
-
-                let mut fields = Vec::new();
-                let mut b = buf;
-                for _ in 0..n {
-                    let (buf, ctype) = Self::decode(b)?;
-                    if let Some(ctype) = ctype {
-                        fields.push(ctype);
-                    } else {
-                        return Ok((buf, None));
-                    }
-                    b = buf
+                0x0001 => (buf, Some(ColumnType::Ascii)),
+                0x0002 => (buf, Some(ColumnType::Bigint)),
+                0x0003 => (buf, Some(ColumnType::Blob)),
+                0x0004 => (buf, Some(ColumnType::Boolean)),
+                0x0005 => (buf, Some(ColumnType::Counter)),
+                0x0006 => (buf, Some(ColumnType::Decimal)),
+                0x0007 => (buf, Some(ColumnType::Double)),
+                0x0008 => (buf, Some(ColumnType::Float)),
+                0x0009 => (buf, Some(ColumnType::Int)),
+                0x000B => (buf, Some(ColumnType::Timestamp)),
+                0x000C => (buf, Some(ColumnType::Uuid)),
+                0x000D => (buf, Some(ColumnType::Varchar)),
+                0x000E => (buf, Some(ColumnType::Varint)),
+                0x000F => (buf, Some(ColumnType::Timeuuid)),
+                0x0010 => (buf, Some(ColumnType::Inet)),
+                0x0020 => {
+                    let (buf, inner) = Self::decode(buf)?;
+                    (buf, inner.map(|v| ColumnType::List(Box::new(v))))
                 }
-                (b, Some(ColumnType::Tuple(TupleDefinition(fields))))
+                0x0021 => {
+                    let (buf, inner_key) = Self::decode(buf)?;
+                    let (buf, inner_value) = Self::decode(buf)?;
+                    let map = inner_key.and_then(|k| {
+                        inner_value.map(|v| (ColumnType::Map(Box::new(k), Box::new(v))))
+                    });
+                    (buf, map)
+                }
+                0x0022 => {
+                    let (buf, inner) = Self::decode(buf)?;
+                    (buf, inner.map(|v| ColumnType::Set(Box::new(v))))
+                }
+                0x0030 => {
+                    let (buf, ks) = decode::string(buf)?;
+                    let (buf, name) = decode::string(buf)?;
+                    let (buf, n) = decode::short(buf)?;
+
+                    let mut fields = Vec::new();
+                    let mut b = buf;
+                    for _ in 0..n {
+                        let (buf, fname) = decode::string(b)?;
+                        let (buf, ctype) = Self::decode(buf)?;
+                        if let Some(ctype) = ctype {
+                            fields.push(UdtField(fname, ctype));
+                        } else {
+                            return Ok((buf, None));
+                        }
+                        b = buf
+                    }
+                    (
+                        b,
+                        Some(ColumnType::Udt(UdtDefinition {
+                            keyspace: ks,
+                            name: name,
+                            fields: fields,
+                        })),
+                    )
+                }
+
+                0x0031 => {
+                    let (buf, n) = decode::short(buf)?;
+
+                    let mut fields = Vec::new();
+                    let mut b = buf;
+                    for _ in 0..n {
+                        let (buf, ctype) = Self::decode(b)?;
+                        if let Some(ctype) = ctype {
+                            fields.push(ctype);
+                        } else {
+                            return Ok((buf, None));
+                        }
+                        b = buf
+                    }
+                    (b, Some(ColumnType::Tuple(TupleDefinition(fields))))
+                }
+                _ => unimplemented!(),
             }
-                   _ => unimplemented!(),
-               }
-           })
+        })
     }
 }
 
 impl ResultHeader {
     pub fn decode(_v: ProtocolVersion, buf: BytesMut) -> Result<(BytesMut, Option<ResultHeader>)> {
         if buf.len() < 4 {
-            Err(ErrorKind::Incomplete(format!("Need 4 bytes for length")).into())
+            Err(
+                ErrorKind::Incomplete(format!("Need 4 bytes for length")).into(),
+            )
         } else {
             let (buf, t) = decode::int(buf)?;
             match t {
@@ -254,8 +260,9 @@ impl ResultHeader {
                 0x0002 => Self::match_decode(Self::decode_rows_metadata(buf), |d| ResultHeader::Rows(d)),
                 0x0003 => Self::match_decode(decode::string(buf), |s| ResultHeader::SetKeyspace(s)),
                 0x0005 => {
-                    Self::match_decode(Self::decode_schema_change(buf),
-                                       |c| ResultHeader::SchemaChange(c))
+                    Self::match_decode(Self::decode_schema_change(buf), |c| {
+                        ResultHeader::SchemaChange(c)
+                    })
                 }
                 // TODO:
                 // 0x0004    Prepared: result to a PREPARE message.
@@ -265,7 +272,8 @@ impl ResultHeader {
     }
 
     fn match_decode<T, F>(decoded: decode::ParseResult<T>, f: F) -> Result<(BytesMut, Option<ResultHeader>)>
-        where F: Fn(T) -> ResultHeader
+    where
+        F: Fn(T) -> ResultHeader,
     {
         match decoded {
             Ok((buf, s)) => Ok((buf, Some(f(s)))),
@@ -278,12 +286,14 @@ impl ResultHeader {
         let (buf, target) = decode::string(buf)?;
         let (buf, options) = decode::string(buf)?;
 
-        Ok((buf,
+        Ok((
+            buf,
             SchemaChangePayload {
                 change_type: change_type,
                 target: target,
                 options: options,
-            }))
+            },
+        ))
     }
 
     fn decode_rows_metadata(buf: BytesMut) -> decode::ParseResult<RowsMetadata> {
@@ -300,9 +310,9 @@ impl ResultHeader {
             let (buf, keyspace) = decode::string(buf)?;
             let (buf, table) = decode::string(buf)?;
             rows_metadata.global_tables_spec = Some(TableSpec {
-                                                        keyspace: keyspace,
-                                                        table: table,
-                                                    });
+                keyspace: keyspace,
+                table: table,
+            });
             buf
         } else {
             buf
@@ -318,11 +328,13 @@ impl ResultHeader {
                     let (buf, keyspace) = decode::string(b)?;
                     let (buf, table) = decode::string(buf)?;
 
-                    (buf,
-                     Some(TableSpec {
-                              keyspace: keyspace,
-                              table: table,
-                          }))
+                    (
+                        buf,
+                        Some(TableSpec {
+                            keyspace: keyspace,
+                            table: table,
+                        }),
+                    )
                 } else {
                     (b, None)
                 }
@@ -332,17 +344,17 @@ impl ResultHeader {
 
             if let Some(ctype) = ctype {
                 columns.push(if let Some(tspec) = table_spec {
-                                 ColumnSpec::WithoutGlobalSpec {
-                                     table_spec: tspec,
-                                     name: name,
-                                     column_type: ctype,
-                                 }
-                             } else {
-                                 ColumnSpec::WithGlobalSpec {
-                                     name: name,
-                                     column_type: ctype,
-                                 }
-                             });
+                    ColumnSpec::WithoutGlobalSpec {
+                        table_spec: tspec,
+                        name: name,
+                        column_type: ctype,
+                    }
+                } else {
+                    ColumnSpec::WithGlobalSpec {
+                        name: name,
+                        column_type: ctype,
+                    }
+                });
             } else {
                 return Err(decode::Error::Incomplete(decode::Needed::Unknown));
             }
@@ -381,83 +393,85 @@ mod test {
 
         let rexpected = RowsMetadata {
             global_tables_spec: Some(TableSpec {
-                                         keyspace: cql_string!("system"),
-                                         table: cql_string!("local"),
-                                     }),
+                keyspace: cql_string!("system"),
+                table: cql_string!("local"),
+            }),
             paging_state: None,
             no_metadata: false,
-            column_spec: vec![ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("key"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("bootstrapped"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("broadcast_address"),
-                                  column_type: ColumnType::Inet,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("cluster_name"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("cql_version"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("data_center"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("gossip_generation"),
-                                  column_type: ColumnType::Int,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("host_id"),
-                                  column_type: ColumnType::Uuid,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("listen_address"),
-                                  column_type: ColumnType::Inet,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("native_protocol_version"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("partitioner"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("rack"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("release_version"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("rpc_address"),
-                                  column_type: ColumnType::Inet,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("schema_version"),
-                                  column_type: ColumnType::Uuid,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("thrift_version"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("tokens"),
-                                  column_type: ColumnType::Set(Box::new(ColumnType::Varchar)),
-                              },
-                              ColumnSpec::WithGlobalSpec {
-                                  name: cql_string!("truncated_at"),
-                                  column_type: ColumnType::Map(Box::new(ColumnType::Uuid), Box::new(ColumnType::Blob)),
-                              }],
+            column_spec: vec![
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("key"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("bootstrapped"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("broadcast_address"),
+                    column_type: ColumnType::Inet,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("cluster_name"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("cql_version"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("data_center"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("gossip_generation"),
+                    column_type: ColumnType::Int,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("host_id"),
+                    column_type: ColumnType::Uuid,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("listen_address"),
+                    column_type: ColumnType::Inet,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("native_protocol_version"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("partitioner"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("rack"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("release_version"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("rpc_address"),
+                    column_type: ColumnType::Inet,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("schema_version"),
+                    column_type: ColumnType::Uuid,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("thrift_version"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("tokens"),
+                    column_type: ColumnType::Set(Box::new(ColumnType::Varchar)),
+                },
+                ColumnSpec::WithGlobalSpec {
+                    name: cql_string!("truncated_at"),
+                    column_type: ColumnType::Map(Box::new(ColumnType::Uuid), Box::new(ColumnType::Blob)),
+                },
+            ],
             rows_count: 1,
         };
 
@@ -540,22 +554,24 @@ mod test {
             global_tables_spec: None,
             paging_state: None,
             no_metadata: false,
-            column_spec: vec![ColumnSpec::WithoutGlobalSpec {
-                                  table_spec: TableSpec {
-                                      keyspace: cql_string!("system"),
-                                      table: cql_string!("local"),
-                                  },
-                                  name: cql_string!("key"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithoutGlobalSpec {
-                                  table_spec: TableSpec {
-                                      keyspace: cql_string!("system"),
-                                      table: cql_string!("l0cal"),
-                                  },
-                                  name: cql_string!("bootstrapped"),
-                                  column_type: ColumnType::Varchar,
-                              }],
+            column_spec: vec![
+                ColumnSpec::WithoutGlobalSpec {
+                    table_spec: TableSpec {
+                        keyspace: cql_string!("system"),
+                        table: cql_string!("local"),
+                    },
+                    name: cql_string!("key"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithoutGlobalSpec {
+                    table_spec: TableSpec {
+                        keyspace: cql_string!("system"),
+                        table: cql_string!("l0cal"),
+                    },
+                    name: cql_string!("bootstrapped"),
+                    column_type: ColumnType::Varchar,
+                },
+            ],
             rows_count: 1,
         };
 
@@ -604,12 +620,14 @@ mod test {
         assert!(res.is_err());
 
         let res = ResultHeader::decode(Version3, buf.into()).unwrap();
-        assert_eq!(res.1,
-                   Some(ResultHeader::SchemaChange(SchemaChangePayload {
-                                                       change_type: cql_string!("change_type"),
-                                                       target: cql_string!("target"),
-                                                       options: cql_string!("options"),
-                                                   })));
+        assert_eq!(
+            res.1,
+            Some(ResultHeader::SchemaChange(SchemaChangePayload {
+                change_type: cql_string!("change_type"),
+                target: cql_string!("target"),
+                options: cql_string!("options"),
+            }))
+        );
     }
 
     #[test]
@@ -740,8 +758,10 @@ mod test {
     fn decode_column_type_map_nested() {
         let buf = vec![0x00, 0x21, 0x00, 0x20, 0x00, 0x0D, 0x00, 0x06];
         let res = ColumnType::decode(buf.into()).unwrap();
-        let exp = ColumnType::Map(Box::new(ColumnType::List(Box::new(ColumnType::Varchar))),
-                                  Box::new(ColumnType::Decimal));
+        let exp = ColumnType::Map(
+            Box::new(ColumnType::List(Box::new(ColumnType::Varchar))),
+            Box::new(ColumnType::Decimal),
+        );
         assert_eq!(res.1, Some(exp));
     }
 
@@ -755,18 +775,45 @@ mod test {
 
     #[test]
     fn decode_column_type_udt() {
-        let buf = vec![0x00, 0x30, 0x00, 0x02, 0x6B, 0x73, 0x00, 0x03, 0x75, 0x64, 0x74, 0x00, 0x02, 0x00, 0x02, 0x66,
-                       0x31, 0x00, 0x06, 0x00, 0x02, 0x66, 0x32, 0x00, 0x0D];
+        let buf = vec![
+            0x00,
+            0x30,
+            0x00,
+            0x02,
+            0x6B,
+            0x73,
+            0x00,
+            0x03,
+            0x75,
+            0x64,
+            0x74,
+            0x00,
+            0x02,
+            0x00,
+            0x02,
+            0x66,
+            0x31,
+            0x00,
+            0x06,
+            0x00,
+            0x02,
+            0x66,
+            0x32,
+            0x00,
+            0x0D,
+        ];
         let res = ColumnType::decode(buf.into()).unwrap();
 
-        let fields = vec![UdtField(cql_string!("f1"), ColumnType::Decimal),
-                          UdtField(cql_string!("f2"), ColumnType::Varchar)];
+        let fields = vec![
+            UdtField(cql_string!("f1"), ColumnType::Decimal),
+            UdtField(cql_string!("f2"), ColumnType::Varchar),
+        ];
 
         let exp = ColumnType::Udt(UdtDefinition {
-                                      keyspace: cql_string!("ks"),
-                                      name: cql_string!("udt"),
-                                      fields: fields,
-                                  });
+            keyspace: cql_string!("ks"),
+            name: cql_string!("udt"),
+            fields: fields,
+        });
         assert_eq!(res.1, Some(exp));
     }
 
@@ -774,7 +821,9 @@ mod test {
     fn decode_column_type_tuple() {
         let buf = vec![0x00, 0x31, 0x00, 0x02, 0x00, 0x0D, 0x00, 0x06];
         let res = ColumnType::decode(buf.into()).unwrap();
-        let exp = ColumnType::Tuple(TupleDefinition(vec![ColumnType::Varchar, ColumnType::Decimal]));
+        let exp = ColumnType::Tuple(TupleDefinition(
+            vec![ColumnType::Varchar, ColumnType::Decimal],
+        ));
         assert_eq!(res.1, Some(exp));
     }
 

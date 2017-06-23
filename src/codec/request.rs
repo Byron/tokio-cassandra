@@ -44,12 +44,16 @@ impl CqlEncode for StartupMessage {
         use codec::primitives::CqlFrom;
 
         let mut sm: HashMap<CqlString, CqlString> = HashMap::new();
-        sm.insert(unsafe { CqlString::unchecked_from("CQL_VERSION") },
-                  self.cql_version.clone());
+        sm.insert(
+            unsafe { CqlString::unchecked_from("CQL_VERSION") },
+            self.cql_version.clone(),
+        );
 
         if let Some(ref c) = self.compression {
-            sm.insert(unsafe { CqlString::unchecked_from("COMPRESSION") },
-                      c.clone());
+            sm.insert(
+                unsafe { CqlString::unchecked_from("COMPRESSION") },
+                c.clone(),
+            );
         }
         let sm = unsafe { CqlStringMap::unchecked_from(sm) };
         let l = buf.len();
@@ -125,12 +129,10 @@ impl CqlEncode for QueryMessage {
 
         self.values.as_ref().map(|v| v.encode(version, buf));
         self.page_size.map(|v| encode::int(v, buf));
-        self.paging_state
-            .as_ref()
-            .map(|v| encode::bytes(v, buf));
-        self.serial_consistency
-            .as_ref()
-            .map(|v| encode::consistency(&v, buf));
+        self.paging_state.as_ref().map(|v| encode::bytes(v, buf));
+        self.serial_consistency.as_ref().map(|v| {
+            encode::consistency(&v, buf)
+        });
         self.timestamp.map(|v| encode::long(v, buf));
 
         Ok(buf.len() - l)
@@ -199,12 +201,13 @@ impl CqlEncode for Message {
     }
 }
 
-pub fn cql_encode(version: ProtocolVersion,
-                  flags: u8,
-                  stream_id: u16,
-                  to_encode: Message,
-                  sink: &mut BytesMut)
-                  -> Result<()> {
+pub fn cql_encode(
+    version: ProtocolVersion,
+    flags: u8,
+    stream_id: u16,
+    to_encode: Message,
+    sink: &mut BytesMut,
+) -> Result<()> {
     sink.put(&[0; ::codec::header::HEADER_LENGTH][..]);
 
     let len = to_encode.encode(version, sink)?;
@@ -254,9 +257,9 @@ mod test {
     #[test]
     fn from_startup_req() {
         let o = Message::Startup(StartupMessage {
-                                     cql_version: cql_string!("3.2.1"),
-                                     compression: None,
-                                 });
+            cql_version: cql_string!("3.2.1"),
+            compression: None,
+        });
 
         let mut buf = BytesMut::with_capacity(64);
         let flags = 0;
@@ -278,7 +281,9 @@ mod test {
         let mut v = BytesMut::with_capacity(64);
         a.encode_auth_response(&mut v);
 
-        let o = Message::AuthResponse(AuthResponseMessage { auth_data: CqlBytes::try_from(v).unwrap() });
+        let o = Message::AuthResponse(AuthResponseMessage {
+            auth_data: CqlBytes::try_from(v).unwrap(),
+        });
 
         let mut buf = BytesMut::with_capacity(64);
         let flags = 0;
@@ -298,16 +303,15 @@ mod test {
 
 
         let o = Message::Query(QueryMessage {
-                                   query: CqlLongString::try_from("select * from system.local where key = 'local'")
-                                       .unwrap(),
-                                   values: None,
-                                   consistency: CqlConsistency::One,
-                                   skip_metadata: false,
-                                   page_size: Some(5000),
-                                   paging_state: None,
-                                   serial_consistency: None,
-                                   timestamp: Some(1486294317376770),
-                               });
+            query: CqlLongString::try_from("select * from system.local where key = 'local'").unwrap(),
+            values: None,
+            consistency: CqlConsistency::One,
+            skip_metadata: false,
+            page_size: Some(5000),
+            paging_state: None,
+            serial_consistency: None,
+            timestamp: Some(1486294317376770),
+        });
 
         cql_encode(Version3, flags, stream_id, o, &mut buf).unwrap();
 
@@ -350,7 +354,22 @@ mod test {
         let mut buf = BytesMut::with_capacity(64);
         values.encode(Version3, &mut buf).unwrap();
 
-        let expected = vec![0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x02, 0x03];
+        let expected = vec![
+            0x00,
+            0x02,
+            0x00,
+            0x00,
+            0x00,
+            0x02,
+            0x00,
+            0x01,
+            0x00,
+            0x00,
+            0x00,
+            0x02,
+            0x02,
+            0x03,
+        ];
 
         assert_eq!(expected, buf);
     }
@@ -368,7 +387,19 @@ mod test {
         let mut buf = BytesMut::with_capacity(64);
         values.encode(Version3, &mut buf).unwrap();
 
-        let expected = vec![0x00, 0x01, 0x00, 0x01, 97, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01];
+        let expected = vec![
+            0x00,
+            0x01,
+            0x00,
+            0x01,
+            97,
+            0x00,
+            0x00,
+            0x00,
+            0x02,
+            0x00,
+            0x01,
+        ];
         assert_eq!(expected, buf);
     }
 }

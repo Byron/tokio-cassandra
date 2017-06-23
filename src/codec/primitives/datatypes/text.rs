@@ -50,7 +50,8 @@ impl Debug for Ascii {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Ascii {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         let mut s = String::with_capacity(self.inner.len());
         for c in &self.inner {
@@ -83,7 +84,9 @@ impl CqlSerializable for Text {
     }
 
     fn deserialize(data: BytesMut) -> Result<Self> {
-        Ok(Text { inner: String::from(::std::str::from_utf8(data.as_ref()).unwrap()) })
+        Ok(Text {
+            inner: String::from(::std::str::from_utf8(data.as_ref()).unwrap()),
+        })
     }
 
     fn bytes_len(&self) -> Option<BytesLen> {
@@ -94,7 +97,8 @@ impl CqlSerializable for Text {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Text {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_str(&self.inner)
     }

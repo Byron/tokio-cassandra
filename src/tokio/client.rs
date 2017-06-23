@@ -37,15 +37,22 @@ impl<T: AsyncRead + AsyncWrite + 'static> ClientProto<T> for CqlProto {
     type BindTransport = io::Result<Self::Transport>;
 
     fn bind_transport(&self, io: T) -> Self::BindTransport {
-        Ok(io.framed(CqlCodec::new(self.version, self.debug.clone().unwrap_or_default())))
+        Ok(io.framed(CqlCodec::new(
+            self.version,
+            self.debug.clone().unwrap_or_default(),
+        )))
     }
 }
 
 pub struct ClientHandle {
-    inner: Box<Service<Request = RequestMessage,
-                       Response = ResponseMessage,
-                       Error = io::Error,
-                       Future = ClientProxyResponse<ResponseMessage, io::Error>>>,
+    inner: Box<
+        Service<
+            Request = RequestMessage,
+            Response = ResponseMessage,
+            Error = io::Error,
+            Future = ClientProxyResponse<ResponseMessage, io::Error>,
+        >,
+    >,
 }
 
 impl From<request::Message> for RequestMessage {
@@ -81,23 +88,27 @@ pub struct Client {
 }
 
 #[cfg(not(feature = "with-openssl"))]
-fn ssl_client(_protocol: CqlProto,
-              _addr: &SocketAddr,
-              _handle: &Handle,
-              _tls: ssl::Options)
-              -> Box<Future<Item = ClientProxy<RequestMessage, ResponseMessage, io::Error>, Error = io::Error>> {
+fn ssl_client(
+    _protocol: CqlProto,
+    _addr: &SocketAddr,
+    _handle: &Handle,
+    _tls: ssl::Options,
+) -> Box<Future<Item = ClientProxy<RequestMessage, ResponseMessage, io::Error>, Error = io::Error>> {
     use futures::future;
     use super::utils::io_err;
-    Box::new(future::err(io_err("Please compile this library with \
-                                                     --features=ssl")))
+    Box::new(future::err(io_err(
+        "Please compile this library with \
+                                                     --features=ssl",
+    )))
 }
 
 #[cfg(feature = "with-openssl")]
-fn ssl_client(protocol: CqlProto,
-              addr: &SocketAddr,
-              handle: &Handle,
-              tls: ssl::Options)
-              -> Box<Future<Item = ClientProxy<RequestMessage, ResponseMessage, io::Error>, Error = io::Error>> {
+fn ssl_client(
+    protocol: CqlProto,
+    addr: &SocketAddr,
+    handle: &Handle,
+    tls: ssl::Options,
+) -> Box<Future<Item = ClientProxy<RequestMessage, ResponseMessage, io::Error>, Error = io::Error>> {
     use super::ssl::ssl_client::SslClient;
     Box::new(SslClient::new(protocol, tls).connect(addr, handle))
 }
@@ -110,28 +121,32 @@ pub struct ConnectOptions {
 }
 
 impl Client {
-    pub fn connect(self,
-                   addr: &SocketAddr,
-                   handle: &Handle,
-                   options: ConnectOptions)
-                   -> Box<Future<Item = ClientHandle, Error = Error>> {
+    pub fn connect(
+        self,
+        addr: &SocketAddr,
+        handle: &Handle,
+        options: ConnectOptions,
+    ) -> Box<Future<Item = ClientHandle, Error = Error>> {
         let ConnectOptions {
             creds,
             tls,
             desired_cql_version,
         } = options;
         let ret = match tls {
-                Some(tls) => ssl_client(self.protocol, addr, handle, tls),
-                None => Box::new(TcpClient::new(self.protocol).connect(addr, handle)),
-            }
-            .map(|client_proxy| ClientHandle { inner: Box::new(client_proxy) })
+            Some(tls) => ssl_client(self.protocol, addr, handle, tls),
+            None => Box::new(TcpClient::new(self.protocol).connect(addr, handle)),
+        }.map(|client_proxy| {
+            ClientHandle { inner: Box::new(client_proxy) }
+        })
             .and_then(|client_handle| {
-                          client_handle
-                              .call(request::Message::Options)
-                              .map(|r| (r, client_handle))
-                      })
+                client_handle.call(request::Message::Options).map(|r| {
+                    (r, client_handle)
+                })
+            })
             .map_err(|e| e.into())
-            .and_then(|(res, ch)| interpret_response_and_handle(ch, res, creds, desired_cql_version))
+            .and_then(|(res, ch)| {
+                interpret_response_and_handle(ch, res, creds, desired_cql_version)
+            })
             .and_then(|ch| Ok(ch));
 
         Box::new(ret)

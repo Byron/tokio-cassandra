@@ -23,9 +23,10 @@ impl CqlFrom<CqlStringList, Vec<CqlString>> for CqlStringList {
 
 impl CqlStringList {
     pub fn try_from_iter_easy<'a, I, E, S>(v: I) -> Result<CqlStringList>
-        where I: IntoIterator<IntoIter = E, Item = S>,
-              E: Iterator<Item = S> + ExactSizeIterator,
-              S: Into<&'a str>
+    where
+        I: IntoIterator<IntoIter = E, Item = S>,
+        E: Iterator<Item = S> + ExactSizeIterator,
+        S: Into<&'a str>,
     {
         let v = v.into_iter();
         let mut res = Vec::with_capacity(v.len());
@@ -38,9 +39,10 @@ impl CqlStringList {
 
 impl CqlStringList {
     pub fn try_from_iter<'a, I, E, S>(v: I) -> Result<CqlStringList>
-        where I: IntoIterator<IntoIter = E, Item = S>,
-              E: Iterator<Item = S> + ExactSizeIterator,
-              S: Into<&'a str>
+    where
+        I: IntoIterator<IntoIter = E, Item = S>,
+        E: Iterator<Item = S> + ExactSizeIterator,
+        S: Into<&'a str>,
     {
         let v = v.into_iter();
         let mut res = Vec::with_capacity(v.len());
@@ -78,8 +80,9 @@ impl CqlFrom<CqlStringMap, HashMap<CqlString, CqlString>> for CqlStringMap {
 
 impl CqlStringMap {
     pub fn try_from_iter<I, E>(v: I) -> Result<CqlStringMap>
-        where I: IntoIterator<IntoIter = E, Item = (CqlString, CqlString)>,
-              E: Iterator<Item = (CqlString, CqlString)> + ExactSizeIterator
+    where
+        I: IntoIterator<IntoIter = E, Item = (CqlString, CqlString)>,
+        E: Iterator<Item = (CqlString, CqlString)> + ExactSizeIterator,
     {
         let v = v.into_iter();
         let mut res = HashMap::with_capacity(v.len());
@@ -115,8 +118,9 @@ impl CqlFrom<CqlStringMultiMap, HashMap<CqlString, CqlStringList>> for CqlString
 
 impl CqlStringMultiMap {
     pub fn try_from_iter<I, E>(v: I) -> Result<CqlStringMultiMap>
-        where I: IntoIterator<IntoIter = E, Item = (CqlString, CqlStringList)>,
-              E: Iterator<Item = (CqlString, CqlStringList)> + ExactSizeIterator
+    where
+        I: IntoIterator<IntoIter = E, Item = (CqlString, CqlStringList)>,
+        E: Iterator<Item = (CqlString, CqlStringList)> + ExactSizeIterator,
     {
         let v = v.into_iter();
         let mut res = HashMap::with_capacity(v.len());

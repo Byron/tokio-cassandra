@@ -5,7 +5,7 @@ use bytes::BytesMut;
 use byteorder::{ByteOrder, BigEndian};
 use codec::primitives::CqlFrom;
 
-#[derive(Debug,PartialEq,Eq,Clone,Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Needed {
     /// needs more data, but we do not know how much
     Unknown,
@@ -138,8 +138,9 @@ pub fn consistency(mut i: BytesMut) -> ParseResult<CqlConsistency> {
     }
     let databuf = i.split_to(2);
     let short = BigEndian::read_u16(databuf.as_ref());
-    let c = CqlConsistency::try_from(short)
-        .map_err(|e| ParseError(format!("{}", e)))?;
+    let c = CqlConsistency::try_from(short).map_err(|e| {
+        ParseError(format!("{}", e))
+    })?;
     Ok((i, c))
 }
 
@@ -222,10 +223,14 @@ mod test {
         encode::string(&s, &mut b);
         let e: BytesMut = b.into();
 
-        assert_eq!(string(e.clone().split_to(1)).unwrap_err(),
-                   Incomplete(Size(2)));
-        assert_eq!(string(e.clone().split_to(3)).unwrap_err(),
-                   Incomplete(Size(5)));
+        assert_eq!(
+            string(e.clone().split_to(1)).unwrap_err(),
+            Incomplete(Size(2))
+        );
+        assert_eq!(
+            string(e.clone().split_to(3)).unwrap_err(),
+            Incomplete(Size(5))
+        );
     }
 
     // TODO: move tests from types here, cause it seems very similar

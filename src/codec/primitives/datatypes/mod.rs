@@ -22,7 +22,8 @@ error_chain! {
 }
 
 pub trait CqlSerializable
-    where Self: Sized
+where
+    Self: Sized,
 {
     fn deserialize(data: BytesMut) -> Result<Self>;
     fn serialize(&self, &mut BytesMut);
@@ -30,7 +31,8 @@ pub trait CqlSerializable
 }
 
 pub trait TryFrom<T>
-    where Self: Sized
+where
+    Self: Sized,
 {
     fn try_from(data: T) -> Result<Self>;
 }
@@ -60,7 +62,8 @@ mod special;
 pub use self::special::*;
 
 fn serialize_bytes<T>(data: &Option<T>, buf: &mut BytesMut)
-    where T: CqlSerializable
+where
+    T: CqlSerializable,
 {
     match data {
         &Some(ref item) => {
@@ -91,14 +94,17 @@ fn serialize_bytesmut(data: &Option<BytesMut>, buf: &mut BytesMut) {
 }
 
 fn deserialize_bytes<T>(buf: BytesMut) -> Result<(BytesMut, Option<T>)>
-    where T: CqlSerializable
+where
+    T: CqlSerializable,
 {
     let (data, bytes) = ::codec::primitives::decode::bytes(buf)?;
-    Ok((data,
+    Ok((
+        data,
         match bytes.as_option() {
             Some(b) => Some(T::deserialize(b)?),
             None => None,
-        }))
+        },
+    ))
 }
 
 pub fn deserialize_bytesmut(buf: BytesMut) -> Result<(BytesMut, Option<BytesMut>)> {
@@ -168,7 +174,8 @@ pub struct SerializableCell<'a>(pub &'a ColumnType, pub Option<BytesMut>);
 #[cfg(feature = "with-serde")]
 impl<'a> ::serde::Serialize for SerializableCell<'a> {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serde_cell(self.0, self.1.clone(), serializer)
     }
@@ -241,7 +248,8 @@ mod test_encode_decode {
     use bytes::BytesMut;
 
     fn assert_serialization_deserialization<T>(to_encode: T)
-        where T: PartialEq + ::std::fmt::Debug + CqlSerializable
+    where
+        T: PartialEq + ::std::fmt::Debug + CqlSerializable,
     {
         let mut encoded = BytesMut::with_capacity(64);
         to_encode.serialize(&mut encoded);
@@ -321,7 +329,11 @@ mod test_encode_decode {
 
     #[test]
     fn list_boolean() {
-        let to_encode = List::try_from(vec![Some(Boolean::new(false)), Some(Boolean::new(true)), None]).unwrap();
+        let to_encode = List::try_from(vec![
+            Some(Boolean::new(false)),
+            Some(Boolean::new(true)),
+            None,
+        ]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
@@ -333,12 +345,19 @@ mod test_encode_decode {
 
     #[test]
     fn list_nested() {
-        let to_encode = List::try_from(vec![Some(List::try_from(vec![Some(Varchar::try_from("a").unwrap())])
-                                                     .unwrap()),
-                                            Some(List::try_from(vec![Some(Varchar::try_from("b").unwrap()),
-                                                                     Some(Varchar::try_from("cd").unwrap())])
-                                                         .unwrap())])
-                .unwrap();
+        let to_encode = List::try_from(vec![
+            Some(
+                List::try_from(
+                    vec![Some(Varchar::try_from("a").unwrap())],
+                ).unwrap()
+            ),
+            Some(
+                List::try_from(vec![
+                    Some(Varchar::try_from("b").unwrap()),
+                    Some(Varchar::try_from("cd").unwrap()),
+                ]).unwrap()
+            ),
+        ]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
@@ -401,14 +420,20 @@ mod test_encode_decode {
         assert_eq!(&Varint::try_from(vec![0x00]).unwrap().to_string(), "0");
         assert_eq!(&Varint::try_from(vec![0x01]).unwrap().to_string(), "1");
         assert_eq!(&Varint::try_from(vec![0x7F]).unwrap().to_string(), "127");
-        assert_eq!(&Varint::try_from(vec![0x00, 0x80]).unwrap().to_string(),
-                   "128");
-        assert_eq!(&Varint::try_from(vec![0x00, 0x81]).unwrap().to_string(),
-                   "129");
+        assert_eq!(
+            &Varint::try_from(vec![0x00, 0x80]).unwrap().to_string(),
+            "128"
+        );
+        assert_eq!(
+            &Varint::try_from(vec![0x00, 0x81]).unwrap().to_string(),
+            "129"
+        );
         assert_eq!(&Varint::try_from(vec![0xFF]).unwrap().to_string(), "-1");
         assert_eq!(&Varint::try_from(vec![0x80]).unwrap().to_string(), "-128");
-        assert_eq!(&Varint::try_from(vec![0xFF, 0x7F]).unwrap().to_string(),
-                   "-129");
+        assert_eq!(
+            &Varint::try_from(vec![0xFF, 0x7F]).unwrap().to_string(),
+            "-129"
+        );
     }
 
     #[test]
@@ -419,19 +444,21 @@ mod test_encode_decode {
 
     #[test]
     fn raw_tuple() {
-        let to_encode = RawTuple::try_from(vec![Some(vec![0x00, 0x80].into()),
-                                                None,
-                                                Some(vec![0x00, 0x80].into())])
-                .unwrap();
+        let to_encode = RawTuple::try_from(vec![
+            Some(vec![0x00, 0x80].into()),
+            None,
+            Some(vec![0x00, 0x80].into()),
+        ]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 
     #[test]
     fn raw_udt() {
-        let to_encode = RawUdt::try_from(vec![Some(vec![0x00, 0x80].into()),
-                                              None,
-                                              Some(vec![0x00, 0x80].into())])
-                .unwrap();
+        let to_encode = RawUdt::try_from(vec![
+            Some(vec![0x00, 0x80].into()),
+            None,
+            Some(vec![0x00, 0x80].into()),
+        ]).unwrap();
         assert_serialization_deserialization(to_encode);
     }
 }

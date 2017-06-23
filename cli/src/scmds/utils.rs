@@ -20,7 +20,7 @@ impl Default for Demo {
             result_example: Header::try_from(b"\x03\x02\x00\x00\x05\x00\x00\x00\x00").unwrap(),
             description: "I believe we need to implement the serde-traits manually on our response types to \
                               implement it in a controlled fashion without extra copies."
-                    .into(),
+                .into(),
         }
     }
 }
@@ -76,7 +76,8 @@ mod highlighting {
     use clap;
 
     struct Highlighter<'a, W>
-        where W: Write
+    where
+        W: Write,
     {
         hl: HighlightLines<'a>,
         cursor: Cursor<Vec<u8>>,
@@ -84,7 +85,8 @@ mod highlighting {
     }
 
     impl<'a, W> Drop for Highlighter<'a, W>
-        where W: Write
+    where
+        W: Write,
     {
         fn drop(&mut self) {
             self.flush().ok();
@@ -92,7 +94,8 @@ mod highlighting {
     }
 
     impl<'a, W> Write for Highlighter<'a, W>
-        where W: Write
+    where
+        W: Write,
     {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             self.cursor.write(buf)
@@ -147,9 +150,12 @@ mod highlighting {
         match fmt {
             OutputFormat::json => {
                 let mut hl = Highlighter {
-                    hl: HighlightLines::new(ss.find_syntax_by_extension("yaml")
-                                                .expect("yaml syntax to be compiled in"),
-                                            theme),
+                    hl: HighlightLines::new(
+                        ss.find_syntax_by_extension("yaml").expect(
+                            "yaml syntax to be compiled in",
+                        ),
+                        theme,
+                    ),
                     writer: out,
                     cursor: Cursor::new(Vec::new()),
                 };
@@ -157,9 +163,12 @@ mod highlighting {
             }
             OutputFormat::yaml => {
                 let mut hl = Highlighter {
-                    hl: HighlightLines::new(ss.find_syntax_by_extension("json")
-                                                .expect("json syntax to be compiled in"),
-                                            theme),
+                    hl: HighlightLines::new(
+                        ss.find_syntax_by_extension("json").expect(
+                            "json syntax to be compiled in",
+                        ),
+                        theme,
+                    ),
                     writer: out,
                     cursor: Cursor::new(Vec::new()),
                 };

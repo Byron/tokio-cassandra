@@ -28,21 +28,23 @@ pub struct Connect<Kind, P> {
 }
 
 impl<Kind, P> Future for Connect<Kind, P>
-    where P: BindClient<Kind, SslStream<TcpStream>>
+where
+    P: BindClient<Kind, SslStream<TcpStream>>,
 {
     type Item = P::BindClient;
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<P::BindClient, io::Error> {
-        let socket = try_ready!(self.socket
-                                    .poll()
-                                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e)));
+        let socket = try_ready!(self.socket.poll().map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, e)
+        }));
         Ok(Async::Ready(self.proto.bind_client(&self.handle, socket)))
     }
 }
 
 impl<Kind, P> SslClient<Kind, P>
-    where P: BindClient<Kind, SslStream<TcpStream>>
+where
+    P: BindClient<Kind, SslStream<TcpStream>>,
 {
     pub fn new(protocol: P, tls: Options) -> SslClient<Kind, P> {
         SslClient {
@@ -62,16 +64,17 @@ impl<Kind, P> SslClient<Kind, P>
                     use super::Configuration::*;
                     let domain = tls.domain.clone();
                     match tls.configuration {
-                            Predefined(options) => {
-                                let connector = SslConnectorBuilder::new(SslMethod::tls())
-                                    .map_err(io_err)
-                                    .and_then(|connector| setup_connector(connector, options))
-                                    .map(|c| c.build());
-                                future::done(connector)
-                            }
-                            Custom(connector) => future::finished(connector),
+                        Predefined(options) => {
+                            let connector = SslConnectorBuilder::new(SslMethod::tls())
+                                .map_err(io_err)
+                                .and_then(|connector| setup_connector(connector, options))
+                                .map(|c| c.build());
+                            future::done(connector)
                         }
-                        .and_then(move |connector| connector.connect_async(&domain, stream).map_err(io_err))
+                        Custom(connector) => future::finished(connector),
+                    }.and_then(move |connector| {
+                        connector.connect_async(&domain, stream).map_err(io_err)
+                    })
                 }))
             },
             handle: handle.clone(),
@@ -79,13 +82,15 @@ impl<Kind, P> SslClient<Kind, P>
     }
 }
 
-fn setup_connector(mut connector: SslConnectorBuilder,
-                   tls: EasyConfiguration)
-                   -> Result<SslConnectorBuilder, io::Error> {
+fn setup_connector(
+    mut connector: SslConnectorBuilder,
+    tls: EasyConfiguration,
+) -> Result<SslConnectorBuilder, io::Error> {
     if let Some(Credentials::Pk12 {
                     contents,
                     passphrase,
-                }) = tls.credentials {
+                }) = tls.credentials
+    {
         Pkcs12::from_der(&contents)
             .and_then(|p| p.parse(&passphrase))
             .and_then(|identity| {
@@ -113,10 +118,12 @@ fn setup_connector(mut connector: SslConnectorBuilder,
             .builder_mut()
             .set_ca_file(&fp)
             .map_err(|e| {
-                         format!("Failed to use certificate-authority file at '{}' with error: {}",
-                                 fp,
-                                 e)
-                     })
+                format!(
+                    "Failed to use certificate-authority file at '{}' with error: {}",
+                    fp,
+                    e
+                )
+            })
             .map_err(io_err)?
     }
     Ok(connector)

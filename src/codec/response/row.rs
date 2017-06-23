@@ -45,18 +45,18 @@ impl Row {
 impl<T: CqlSerializable> ValueAt<T> for Row {
     fn value_at(&self, i: usize) -> Result<T> {
         // TODO: no clone, maybe?
-        Ok(T::deserialize(self.raw_cols[i]
-                              .clone()
-                              .expect("Caller expected non-optional value"))?)
+        Ok(T::deserialize(self.raw_cols[i].clone().expect(
+            "Caller expected non-optional value",
+        ))?)
     }
 }
 
 impl<U: CqlSerializable> ValueAt<Option<U>> for Row {
     fn value_at(&self, i: usize) -> Result<Option<U>> {
         Ok(match self.raw_cols[i].clone() {
-               Some(b) => Some(U::deserialize(b)?),
-               None => None,
-           })
+            Some(b) => Some(U::deserialize(b)?),
+            None => None,
+        })
     }
 }
 
@@ -86,11 +86,12 @@ pub struct SerializableRow<'a>(Row, &'a RowsMetadata);
 #[cfg(feature = "with-serde")]
 impl<'a> ::serde::Serialize for SerializableRow<'a> {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
-        let iter = self.0
-            .col_iter(self.1)
-            .map(|(k, v)| (k.colname(), SerializableCell(k.coltype(), v)));
+        let iter = self.0.col_iter(self.1).map(|(k, v)| {
+            (k.colname(), SerializableCell(k.coltype(), v))
+        });
         serializer.collect_map(iter)
         //        use serde::ser::SerializeMap;
         //        let mut map = serializer.serialize_map(Some(self.inner.inner.len()))?;
@@ -163,9 +164,11 @@ mod test {
         };
 
         let row = Row {
-            raw_cols: vec![as_bytes(&Int::new(123)),
-                           None,
-                           as_bytes(&Text::try_from("foo").unwrap())],
+            raw_cols: vec![
+                as_bytes(&Int::new(123)),
+                None,
+                as_bytes(&Text::try_from("foo").unwrap()),
+            ],
         };
 
         let to = TestStruct {
@@ -183,28 +186,32 @@ mod test {
             global_tables_spec: None,
             paging_state: None,
             no_metadata: false,
-            column_spec: vec![ColumnSpec::WithoutGlobalSpec {
-                                  table_spec: TableSpec::new("ks", "testtable"),
-                                  name: cql_string!("col1"),
-                                  column_type: ColumnType::Int,
-                              },
-                              ColumnSpec::WithoutGlobalSpec {
-                                  table_spec: TableSpec::new("ks", "testtable"),
-                                  name: cql_string!("col2"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithoutGlobalSpec {
-                                  table_spec: TableSpec::new("ks", "testtable"),
-                                  name: cql_string!("col3"),
-                                  column_type: ColumnType::Double,
-                              }],
+            column_spec: vec![
+                ColumnSpec::WithoutGlobalSpec {
+                    table_spec: TableSpec::new("ks", "testtable"),
+                    name: cql_string!("col1"),
+                    column_type: ColumnType::Int,
+                },
+                ColumnSpec::WithoutGlobalSpec {
+                    table_spec: TableSpec::new("ks", "testtable"),
+                    name: cql_string!("col2"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithoutGlobalSpec {
+                    table_spec: TableSpec::new("ks", "testtable"),
+                    name: cql_string!("col3"),
+                    column_type: ColumnType::Double,
+                },
+            ],
             rows_count: 1,
         };
 
         let row = Row {
-            raw_cols: vec![as_bytes(&Int::new(123)),
-                           as_bytes(&Varchar::try_from("hello world").unwrap()),
-                           as_bytes(&Double::new(1.243))],
+            raw_cols: vec![
+                as_bytes(&Int::new(123)),
+                as_bytes(&Varchar::try_from("hello world").unwrap()),
+                as_bytes(&Double::new(1.243)),
+            ],
         };
 
         let mut s = String::new();
@@ -219,8 +226,10 @@ mod test {
             write!(&mut s, "{} = {}\n", spec.colname(), str).unwrap();
         }
 
-        assert_eq!("testtable.col1 = 123\ntesttable.col2 = \"hello world\"\ntesttable.col3 = 1.243\n",
-                   s);
+        assert_eq!(
+            "testtable.col1 = 123\ntesttable.col2 = \"hello world\"\ntesttable.col3 = 1.243\n",
+            s
+        );
     }
 
     // TODO: Test for Errorcase
@@ -249,44 +258,52 @@ mod serde_testing {
             global_tables_spec: None,
             paging_state: None,
             no_metadata: false,
-            column_spec: vec![ColumnSpec::WithoutGlobalSpec {
-                                  table_spec: TableSpec::new("ks", "testtable"),
-                                  name: cql_string!("col1"),
-                                  column_type: ColumnType::Int,
-                              },
-                              ColumnSpec::WithoutGlobalSpec {
-                                  table_spec: TableSpec::new("ks", "testtable"),
-                                  name: cql_string!("col2"),
-                                  column_type: ColumnType::Varchar,
-                              },
-                              ColumnSpec::WithoutGlobalSpec {
-                                  table_spec: TableSpec::new("ks", "testtable"),
-                                  name: cql_string!("col3"),
-                                  column_type: ColumnType::Double,
-                              }],
+            column_spec: vec![
+                ColumnSpec::WithoutGlobalSpec {
+                    table_spec: TableSpec::new("ks", "testtable"),
+                    name: cql_string!("col1"),
+                    column_type: ColumnType::Int,
+                },
+                ColumnSpec::WithoutGlobalSpec {
+                    table_spec: TableSpec::new("ks", "testtable"),
+                    name: cql_string!("col2"),
+                    column_type: ColumnType::Varchar,
+                },
+                ColumnSpec::WithoutGlobalSpec {
+                    table_spec: TableSpec::new("ks", "testtable"),
+                    name: cql_string!("col3"),
+                    column_type: ColumnType::Double,
+                },
+            ],
             rows_count: 1,
         };
 
         let row = Row {
-            raw_cols: vec![as_bytes(&Int::new(123)),
-                           as_bytes(&Varchar::try_from("hello world").unwrap()),
-                           as_bytes(&Double::new(1.234))],
+            raw_cols: vec![
+                as_bytes(&Int::new(123)),
+                as_bytes(&Varchar::try_from("hello world").unwrap()),
+                as_bytes(&Double::new(1.234)),
+            ],
         };
 
-        assert_ser_tokens(&SerializableRow(row, &row_metadata),
-                          &[Token::Map{ len: None },
-                            Token::Str("testtable.col1"),
-                            Token::Some,
-                            Token::I32(123),
+        assert_ser_tokens(
+            &SerializableRow(row, &row_metadata),
+            &[
+                Token::Map { len: None },
+                Token::Str("testtable.col1"),
+                Token::Some,
+                Token::I32(123),
 
-                            Token::Str("testtable.col2"),
-                            Token::Some,
-                            Token::Str("hello world"),
+                Token::Str("testtable.col2"),
+                Token::Some,
+                Token::Str("hello world"),
 
-                            Token::Str("testtable.col3"),
-                            Token::Some,
-                            Token::F64(1.234),
-                            Token::MapEnd]);
+                Token::Str("testtable.col3"),
+                Token::Some,
+                Token::F64(1.234),
+                Token::MapEnd,
+            ],
+        );
     }
 
 }

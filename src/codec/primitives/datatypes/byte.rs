@@ -40,7 +40,8 @@ impl Debug for Blob {
 #[cfg(feature = "with-serde")]
 impl ::serde::Serialize for Blob {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         serializer.serialize_bytes(self.inner.as_ref())
     }
