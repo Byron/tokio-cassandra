@@ -1,7 +1,8 @@
-use super::super::errors::*;
+use super::super::errors::{ResultExt, Result};
 use super::super::args::ConnectionOptions;
-use super::utils::Demo;
+use super::utils::{handle_call_result, request_from_query};
 
+use std::io::{Write, stderr};
 use clap;
 use std::rc::Rc;
 use std::ascii::AsciiExt;
@@ -9,8 +10,8 @@ use std::ascii::AsciiExt;
 use linefeed::{Completion, Completer, ReadResult, Reader};
 use linefeed::Terminal;
 use tokio_core::reactor::Core;
+use tokio_service::Service;
 use tokio_cassandra::tokio::client::ClientHandle;
-use super::utils::{output_result, OutputFormat};
 
 enum PromptKind {
     Idle,
@@ -27,35 +28,22 @@ fn prompt<T: Terminal>(rd: &mut Reader<T>, s: PromptKind) {
 
 fn execute<T: Terminal>(
     rd: &mut Reader<T>,
-    _client: &mut ClientHandle,
+    client: &mut ClientHandle,
     core: &mut Core,
-    query: String,
+    query: &str,
     args: &clap::ArgMatches,
 ) -> Result<()> {
-    {
-        use futures::future;
-        let req = future::lazy(|| {
-            prompt(rd, Busy);
-            Ok::<_, ()>({
-                let mut d = Demo::default();
-                d.description = query;
-                ::std::thread::sleep(::std::time::Duration::from_millis(100));
-                d
-            })
-        });
-        match core.run(req) {
-            Ok(result) => {
-                output_result(&result, OutputFormat::yaml, args)?;
-                println!();
-            }
-            Err(err) => {
-                println!("{:?}", err);
-            }
-        }
-    }
+    prompt(rd, Busy);
+
+    let query_req = request_from_query(query)?;
+    let req = client.call(query_req);
+    let res = core.run(req).map_err(Into::into).and_then(|res| {
+        handle_call_result(res, args)
+    });
 
     prompt(rd, Idle);
-    Ok(())
+
+    res
 }
 
 pub fn interactive<T: Terminal>(
@@ -67,12 +55,16 @@ pub fn interactive<T: Terminal>(
 
     rd.set_completer(Rc::new(CqlCompleter));
     prompt(&mut rd, Idle);
+    let addr = opts.addr.clone();
 
     let (mut core, client) = opts.connect();
-    let mut client = core.run(client)?;
+    let mut client = core.run(client).chain_err(
+        || format!("failed to connect to {}", addr),
+    )?;
 
     if let Some(query) = initial_query {
-        execute(&mut rd, &mut client, &mut core, query, args)?;
+        execute(&mut rd, &mut client, &mut core, &query, args)
+            .chain_err(|| format!("Initial query failed '{}'", query))?;
     }
 
     while let Ok(res) = rd.read_line() {
@@ -82,8 +74,12 @@ pub fn interactive<T: Terminal>(
                 break;
             }
             ReadResult::Input(line) => {
-                rd.add_history(line.to_owned());
-                execute(&mut rd, &mut client, &mut core, line, args)?;
+                if line.len() > 0 {
+                    rd.add_history(line.to_owned());
+                    execute(&mut rd, &mut client, &mut core, &line, args)
+                        .map_err(|err| { writeln!(stderr(), "{}", err).ok(); })
+                        .ok();
+                }
             }
             ReadResult::Signal(sig) => {
                 println!();

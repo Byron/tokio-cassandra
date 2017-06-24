@@ -161,8 +161,9 @@ pub fn run() -> Result<()> {
         )
         .arg(
             Arg::with_name("host")
-                .required(true)
+                .required(false)
                 .takes_value(true)
+                .default_value("localhost")
                 .long("host")
                 .short("h")
                 .help("The name or IP address of the host to connect to."),

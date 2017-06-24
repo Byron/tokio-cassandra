@@ -1,11 +1,14 @@
-use super::super::errors::Result;
+use super::super::errors::{ErrorKind, Result};
 use tokio_cassandra::codec::header::Header;
 #[cfg(not(feature = "colors"))]
 use std::io::Write;
 use std::io;
-#[cfg(not(feature = "colors"))]
 use clap;
 use serde::Serialize;
+use tokio_cassandra::codec::primitives::{CqlFrom, CqlLongString, CqlConsistency};
+use tokio_cassandra::codec::request::{QueryMessage, Message};
+use tokio_cassandra::tokio::messages::StreamingMessage;
+use tokio_cassandra::codec::response::ErrorMessage;
 
 pub const THEME_NAMES: [&'static str; 3] = ["base16-ocean.dark", "Solarized (dark)", "Solarized (light)"];
 
@@ -53,6 +56,40 @@ fn output_result_to_stdout_without_color<S: Serialize>(res: &S, fmt: OutputForma
         OutputFormat::yaml => ::serde_yaml::to_writer(&mut out, res)?,
     }
     Ok(())
+}
+
+pub fn handle_call_result(res: StreamingMessage, args: &clap::ArgMatches) -> Result<()> {
+    match res {
+        StreamingMessage::Error(ErrorMessage { text, code }) => Err(ErrorKind::CqlError(code, text).into()),
+        StreamingMessage::Result(res) => {
+            let res = output_result(
+                &res,
+                args.value_of("output-format")
+                    .expect("clap to work")
+                    .parse()
+                    .expect("clap to work"),
+                args,
+            );
+            println!();
+            res
+        }
+        _ => Err(ErrorKind::Unimplemented(format!("{:?}", res)).into()),
+    }
+}
+
+pub fn request_from_query(query: &str) -> Result<Message> {
+    Ok(Message::Query(QueryMessage {
+        // FIXME: provide a consuming version that consumes a string directly into the vec
+        // and thus prevents an entirely unnecessary copy
+        query: CqlLongString::try_from(query)?,
+        values: None,
+        consistency: CqlConsistency::All,
+        skip_metadata: false,
+        page_size: None,
+        paging_state: None,
+        serial_consistency: Some(CqlConsistency::All),
+        timestamp: None,
+    }))
 }
 
 #[cfg(not(feature = "colors"))]
