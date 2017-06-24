@@ -174,10 +174,7 @@ where
         let mut d = data;
         for _ in 0..n {
             let (data, k) = deserialize_bytes::<K>(d)?;
-            let k = match k {
-                Some(k) => k,
-                None => panic!(),
-            };
+            let k = k.expect("a value for key to be found during iteration");
 
             let (data, v) = deserialize_bytes::<V>(data)?;
             m.insert(k, v);
@@ -474,7 +471,8 @@ impl<'a> Debug for Udt<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
         let field_len = self.def.fields.len();
         if self.inner.inner.len() != field_len {
-            panic!("Inner data fields do not fit to the number of field definitions");
+            error!("Inner data fields do not fit to the number of field definitions");
+            return Err(::std::fmt::Error);
         }
 
         fmt.write_char('{')?;
@@ -534,7 +532,8 @@ impl<'a> Debug for Tuple<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> ::std::fmt::Result {
         let field_len = self.def.0.len();
         if self.inner.inner.len() != field_len {
-            panic!("Inner data fields do not fit to the number of field definitions");
+            error!("Inner data fields do not fit to the number of field definitions");
+            return Err(::std::fmt::Error);
         }
 
         fmt.write_char('(')?;
