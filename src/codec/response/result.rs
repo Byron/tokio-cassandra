@@ -12,6 +12,8 @@ use super::*;
 pub enum ResultMessage {
     Rows { rows: Vec<Row>, meta: RowsMetadata },
     Keyspace(CqlString),
+    SchemaChange(SchemaChangePayload),
+    Void,
 }
 
 #[cfg(feature = "with-serde")]
@@ -20,13 +22,25 @@ impl<'a> ::serde::Serialize for ResultMessage {
     where
         S: ::serde::ser::Serializer,
     {
-        // TODO: make SerializableRow shoudl take a row-reference. Vec copies are not as cheap as
+        // TODO: make SerializableRow should take a row-reference. Vec copies are not as cheap as
         // copying the byte buffer
         match self {
             &ResultMessage::Rows { ref rows, ref meta } => {
                 serializer.collect_seq(rows.iter().map(|r| SerializableRow(r.clone(), meta)))
             }
             &ResultMessage::Keyspace(ref name) => serializer.serialize_str(name.as_ref()),
+            &ResultMessage::SchemaChange(ref payload) => {
+                use serde::ser::SerializeStruct;
+                let mut s = serializer.serialize_struct("SchemaChange", 3)?;
+                s.serialize_field(
+                    "change_type",
+                    payload.change_type.as_ref(),
+                )?;
+                s.serialize_field("target", payload.target.as_ref())?;
+                s.serialize_field("options", payload.options.as_ref())?;
+                s.end()
+            }
+            &ResultMessage::Void => serializer.serialize_str("<void>"),
         }
     }
 }
@@ -51,7 +65,8 @@ impl CqlDecode<ResultMessage> for ResultMessage {
                 }
             }
             ResultHeader::SetKeyspace(name) => ResultMessage::Keyspace(name),
-            _ => panic!("TODO in ResultMessage::decode: {:?}", result_header),
+            ResultHeader::SchemaChange(payload) => ResultMessage::SchemaChange(payload),
+            ResultHeader::Void => ResultMessage::Void,
         })
     }
 }
@@ -856,7 +871,10 @@ mod test {
         let buf = Vec::from(skip_header(&msg[..])).into();
         let msg = ResultMessage::decode(ProtocolVersion::Version3, buf).unwrap();
 
-        let ResultMessage::Rows { rows, .. } = msg;
-        assert_eq!(1, rows.len());
+        if let ResultMessage::Rows { rows, .. } = msg {
+            assert_eq!(1, rows.len());
+        } else {
+            panic!("unexpected variant");
+        }
     }
 }
