@@ -36,7 +36,7 @@ impl From<StreamingMessage> for Message {
             StreamingMessage::Result(msg) => Message::Result(msg),
             StreamingMessage::Partial(_stream) => {
                 // TODO: exhaust stream and build a singular response in a blocking fashion
-                unimplemented!()
+                panic!("TODO: Implement StreamingMessage::Partial in easy-client")
             }
         }
     }

@@ -10,8 +10,8 @@ use super::*;
 
 #[derive(Debug)]
 pub enum ResultMessage {
-    // TODO: is an enum with a single variant necessary ? This could be ResultMessage { rows },
     Rows { rows: Vec<Row>, meta: RowsMetadata },
+    Keyspace(CqlString),
 }
 
 #[cfg(feature = "with-serde")]
@@ -26,6 +26,7 @@ impl<'a> ::serde::Serialize for ResultMessage {
             &ResultMessage::Rows { ref rows, ref meta } => {
                 serializer.collect_seq(rows.iter().map(|r| SerializableRow(r.clone(), meta)))
             }
+            &ResultMessage::Keyspace(ref name) => serializer.serialize_str(name.as_ref()),
         }
     }
 }
@@ -49,7 +50,8 @@ impl CqlDecode<ResultMessage> for ResultMessage {
                     meta: rows_metadata,
                 }
             }
-            _ => unimplemented!(),
+            ResultHeader::SetKeyspace(name) => ResultMessage::Keyspace(name),
+            _ => panic!("TODO in ResultMessage::decode: {:?}", result_header),
         })
     }
 }
@@ -262,7 +264,7 @@ impl ColumnType {
                     }
                     (b, Some(ColumnType::Tuple(TupleDefinition(fields))))
                 }
-                _ => unimplemented!(),
+                _ => panic!("unimplemented column id: {}", id),
             }
         })
     }
