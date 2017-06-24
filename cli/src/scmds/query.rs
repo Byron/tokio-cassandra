@@ -9,6 +9,7 @@ use tokio_cassandra::codec::request::{QueryMessage, Message};
 use tokio_cassandra::codec::response::ErrorMessage;
 use tokio_cassandra::tokio::messages::StreamingMessage;
 use tokio_service::Service;
+use futures::Future;
 use std::fs::File;
 use std::io::{self, Read};
 
@@ -104,13 +105,16 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
         (None, _interactive, _dry_run) => bail!("Query cannot be empty"),
     };
 
-    let (mut core, client) = opts.connect();
-    core.run(client)
-        .chain_err(|| format!("Failed to connect to {}", addr))
+    let (mut core, connect_client) = opts.connect();
+    let query = CqlLongString::try_from(&query)?;
+
+    let connect_and_call = connect_client
+        .then(|res| {
+            res.chain_err(|| format!("Failed to connect to {}", addr))
+        })
         .and_then(|client| {
             // FIXME: provide a consuming version stat consumes a string directly into the vec
             // and thus prevents an entirely unnecessary copy
-            let query = CqlLongString::try_from(&query)?;
             let req = Message::Query(QueryMessage {
                 query: query,
                 values: None,
@@ -121,25 +125,21 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
                 serial_consistency: Some(CqlConsistency::All),
                 timestamp: None,
             });
-            core.run(client.call(req)).map_err(Into::into).and_then(
-                |res| {
-                    match res {
-                        StreamingMessage::Error(ErrorMessage { text, code }) => Err(
-                            ErrorKind::CqlError(code, text).into(),
-                        ),
-                        StreamingMessage::Result(res) => {
-                            output_result(
-                                &res,
-                                args.value_of("output-format")
-                                    .expect("clap to work")
-                                    .parse()
-                                    .expect("clap to work"),
-                                args,
-                            )
-                        }
-                        _ => Ok(()),
-                    }
-                },
-            )
+            client.call(req).map_err(Into::into)
         })
+        .and_then(|res| match res {
+            StreamingMessage::Error(ErrorMessage { text, code }) => Err(ErrorKind::CqlError(code, text).into()),
+            StreamingMessage::Result(res) => {
+                output_result(
+                    &res,
+                    args.value_of("output-format")
+                        .expect("clap to work")
+                        .parse()
+                        .expect("clap to work"),
+                    args,
+                )
+            }
+            _ => Ok(()),
+        });
+    core.run(connect_and_call)
 }
