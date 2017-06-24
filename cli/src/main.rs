@@ -51,7 +51,7 @@ fn with_highlight_flags<'a, 'b>(sc: clap::App<'a, 'b>, default_color: &'a str) -
 pub fn run() -> Result<()> {
     env_logger::init().unwrap();
     let default_cert_type = format!("{}", CertKind::pkcs12);
-    let default_output_format = format!("{}", OutputFormat::json);
+    let default_output_format = format!("{}", OutputFormat::yaml);
     let default_color = format!("{}", ColorMode::auto);
 
     let mut app: clap::App = app_from_crate!();

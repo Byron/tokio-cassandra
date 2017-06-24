@@ -7,7 +7,7 @@ use clap;
 use serde::Serialize;
 use tokio_cassandra::codec::primitives::{CqlFrom, CqlLongString, CqlConsistency};
 use tokio_cassandra::codec::request::{QueryMessage, Message};
-use tokio_cassandra::tokio::messages::StreamingMessage;
+use tokio_cassandra::tokio::easy;
 use tokio_cassandra::codec::response::ErrorMessage;
 
 pub const THEME_NAMES: [&'static str; 3] = ["base16-ocean.dark", "Solarized (dark)", "Solarized (light)"];
@@ -58,10 +58,10 @@ fn output_result_to_stdout_without_color<S: Serialize>(res: &S, fmt: OutputForma
     Ok(())
 }
 
-pub fn handle_call_result(res: StreamingMessage, args: &clap::ArgMatches) -> Result<()> {
+pub fn handle_call_result(res: easy::Message, args: &clap::ArgMatches) -> Result<()> {
     match res {
-        StreamingMessage::Error(ErrorMessage { text, code }) => Err(ErrorKind::CqlError(code, text).into()),
-        StreamingMessage::Result(res) => {
+        easy::Message::Error(ErrorMessage { text, code }) => Err(ErrorKind::CqlError(code, text).into()),
+        easy::Message::Result(res) => {
             let res = output_result(
                 &res,
                 args.value_of("output-format")

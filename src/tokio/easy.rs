@@ -44,7 +44,7 @@ impl From<StreamingMessage> for Message {
 
 impl Service for ClientHandle {
     type Request = request::Message;
-    type Response = StreamingMessage;
+    type Response = Message;
     type Error = io::Error;
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 

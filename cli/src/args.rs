@@ -6,7 +6,8 @@ use std::fs::File;
 use std::io::Read;
 use futures::Future;
 use tokio_cassandra::tokio::error::Error as TokioCassandraError;
-use tokio_cassandra::tokio::client::{self, ClientHandle, CqlProto, Client};
+use tokio_cassandra::tokio::easy::ClientHandle as EasyClientHandle;
+use tokio_cassandra::tokio::client::{self, CqlProto, Client};
 use tokio_cassandra::tokio::codec::CqlCodecDebuggingOptions;
 use tokio_cassandra::tokio::ssl;
 use tokio_cassandra::codec::authentication::Credentials;
@@ -229,10 +230,12 @@ impl ConnectionOptions {
         })
     }
 
-    pub fn connect(self) -> (Core, Box<Future<Item = ClientHandle, Error = TokioCassandraError>>) {
+    pub fn connect(self) -> (Core, Box<Future<Item = EasyClientHandle, Error = TokioCassandraError>>) {
         let core = Core::new().expect("Core can be created");
         let handle = core.handle();
-        let client = self.client.connect(&self.addr, &handle, self.options);
+        let client = Box::new(self.client.connect(&self.addr, &handle, self.options).map(
+            EasyClientHandle::from,
+        ));
         (core, client)
     }
 }

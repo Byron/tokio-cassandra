@@ -11,7 +11,7 @@ use linefeed::{Completion, Completer, ReadResult, Reader};
 use linefeed::Terminal;
 use tokio_core::reactor::Core;
 use tokio_service::Service;
-use tokio_cassandra::tokio::client::ClientHandle;
+use tokio_cassandra::tokio::easy::ClientHandle;
 
 enum PromptKind {
     Idle,
