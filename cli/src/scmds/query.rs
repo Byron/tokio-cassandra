@@ -139,7 +139,7 @@ pub fn query(opts: ConnectionOptions, args: &clap::ArgMatches) -> Result<()> {
                     args,
                 )
             }
-            _ => Ok(()),
+            _ => Err(ErrorKind::Unimplemented(format!("{:?}", res)).into()),
         });
     core.run(connect_and_call)
 }

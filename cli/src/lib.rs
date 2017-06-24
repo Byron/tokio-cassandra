@@ -50,6 +50,10 @@ pub mod errors {
         }
 
         errors {
+            Unimplemented(s: String) {
+                description("An unimplemented code-path was hit")
+                display("Unimplemented: {}", s)
+            }
             CqlError(code: i32, s: CqlString) {
                 description("A CQL Error occurred")
                 display("{}: {}", code, s)
