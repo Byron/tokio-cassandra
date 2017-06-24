@@ -29,7 +29,7 @@ A Cassandra Native Protocol 3 implementation using Tokio for IO.
 1. [x] Decode `UDT`s ,`Tuples`, `Rows`, `(Nested) Collections`, and everything returned by a query
 1. [x] `Debug` trait for _CQL Datatypes_ to support outputting to console/file
 1. [ ] Decode `Result` with support for chunking and full-body-at-once
-1. [ ] First query support for TUI, outputting result using serde
+1. [x] First query support for TUI, outputting result using serde
 1. [x] Serde support for `Result` types
 1. [v1.0 Minimal Viable Product](https://github.com/nhellwig/tokio-cassandra/milestone/2)
 
