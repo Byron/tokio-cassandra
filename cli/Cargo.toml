@@ -37,8 +37,8 @@ version = "0.1"
 [dependencies.syntect]
 default-features = false
 optional = true
-version = "1.6.0"
-features = ["parsing"]
+version = "1.7.0"
+features = ["parsing", "dump-load-rs", "dump-create-rs"]
 
 [dependencies.tokio-cassandra]
 features = ["with-serde", "with-openssl"]
