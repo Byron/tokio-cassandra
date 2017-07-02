@@ -69,6 +69,11 @@ cli-execute:
 	cd cli && cargo run --all-features -- query -i  -k system
 	# cd cli && cargo run --all-features -- query -o yaml -e "select * from system.schema_columnfamilies"
 
+nikolai: $(CLI_EXECUTABLE) $(CQLSH_EXECUTABLE)
+#	$(MAKE) plain-docker-db
+	@source $(VIRTUAL_ENV)/bin/activate && $(CQLSH_EXECUTABLE) localhost --cqlversion=3.2.1 -f tests/fixtures/v3/cql/make-nikol-ai.cql
+	$(CLI_EXECUTABLE) query -o json -e 'select text from nikolai.output ' | jq -r  '.[-1].text'
+
 secrets:
 	$(MAKE) -C etc/docker-cassandra $@
 
