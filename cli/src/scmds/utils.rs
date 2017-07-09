@@ -186,6 +186,7 @@ mod highlighting {
 
         let s = io::stdout();
         let out = s.lock();
+
         let mut hl = Highlighter {
             hl: HighlightLines::new(
                 ss.find_syntax_by_extension(match fmt {
@@ -197,7 +198,12 @@ mod highlighting {
             writer: out,
             cursor: Cursor::new(Vec::new()),
         };
-        ::serde_json::ser::to_writer_pretty(&mut hl, res)?;
+
+        match fmt {
+            OutputFormat::json => ::serde_json::ser::to_writer_pretty(&mut hl, res)?,
+            OutputFormat::yaml => ::serde_yaml::to_writer(&mut hl, res)?,
+        };
+
         Ok(())
     }
 
