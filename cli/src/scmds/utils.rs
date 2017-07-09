@@ -186,34 +186,18 @@ mod highlighting {
 
         let s = io::stdout();
         let out = s.lock();
-        match fmt {
-            OutputFormat::json => {
-                let mut hl = Highlighter {
-                    hl: HighlightLines::new(
-                        ss.find_syntax_by_extension("yaml").expect(
-                            "yaml syntax to be compiled in",
-                        ),
-                        theme,
-                    ),
-                    writer: out,
-                    cursor: Cursor::new(Vec::new()),
-                };
-                ::serde_json::ser::to_writer_pretty(&mut hl, res)?
-            }
-            OutputFormat::yaml => {
-                let mut hl = Highlighter {
-                    hl: HighlightLines::new(
-                        ss.find_syntax_by_extension("json").expect(
-                            "json syntax to be compiled in",
-                        ),
-                        theme,
-                    ),
-                    writer: out,
-                    cursor: Cursor::new(Vec::new()),
-                };
-                ::serde_yaml::to_writer(&mut hl, res)?
-            }
-        }
+        let mut hl = Highlighter {
+            hl: HighlightLines::new(
+                ss.find_syntax_by_extension(match fmt {
+                    OutputFormat::json => "json",
+                    OutputFormat::yaml => "yaml",
+                }).expect("yaml syntax to be compiled in"),
+                theme,
+            ),
+            writer: out,
+            cursor: Cursor::new(Vec::new()),
+        };
+        ::serde_json::ser::to_writer_pretty(&mut hl, res)?;
         Ok(())
     }
 
