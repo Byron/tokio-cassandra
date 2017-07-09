@@ -43,13 +43,13 @@ integration-tests: $(CLI_EXECUTABLE) $(DB_IMAGE_OK)
 	bin/integration-test.sh $(CLI_EXECUTABLE) $(DB_IMAGE_NAME)
 	
 plain-docker-db: $(DB_IMAGE_OK)
-	/usr/bin/env bash -c 'source lib/utilities.sh && start-dependencies-plain $(DB_IMAGE_NAME)'
+	/usr/bin/env bash -c 'source lib/utilities.sh && start-cassandra-plain $(DB_IMAGE_NAME)'
 
 auth-docker-db: $(DB_IMAGE_OK)
-	/usr/bin/env bash -c 'source lib/utilities.sh && start-dependencies-auth $(DB_IMAGE_NAME)'
+	/usr/bin/env bash -c 'source lib/utilities.sh && start-cassandra-auth $(DB_IMAGE_NAME)'
 
 cert-docker-db: $(DB_IMAGE_OK)
-	/usr/bin/env bash -c 'source lib/utilities.sh && start-dependencies-cert $(DB_IMAGE_NAME)'
+	/usr/bin/env bash -c 'source lib/utilities.sh && start-cassandra-cert $(DB_IMAGE_NAME)'
 
 type ?= plain
 attach-docker-db:
@@ -65,9 +65,9 @@ $(CQLSH_EXECUTABLE): $(VIRTUAL_ENV)
 cqlsh-execute: $(CQLSH_EXECUTABLE)
 	source $(VIRTUAL_ENV)/bin/activate && $(CQLSH_EXECUTABLE) localhost --cqlversion=3.2.1
 
-cli-execute:
-	cd cli && cargo run --all-features -- query -i  -k system
-	# cd cli && cargo run --all-features -- query -o yaml -e "select * from system.schema_columnfamilies"
+cli-execute: $(CLI_EXECUTABLE)
+#	cd cli && cargo run --all-features -- query -i  -k system
+	$(CLI_EXECUTABLE) query -o yaml -e "select * from system.schema_columnfamilies limit 1"
 
 nikolai: $(CLI_EXECUTABLE) $(CQLSH_EXECUTABLE)
 #	$(MAKE) plain-docker-db

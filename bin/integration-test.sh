@@ -19,7 +19,7 @@ con_host_args=( -h $host --port $port )
 
 trap stop-dependencies HUP INT TRAP TERM
 
-start-dependencies-plain "$image"
+start-cassandra-plain "$image"
 
 #########################################################################
 echo ">>>>>>>>>>>>>>>>>>>> Executing queries           <<<<<<<<<<<<<"
@@ -58,7 +58,7 @@ set +x
 #########################################################################
 echo ">>>>>>>>>>>>>>>>>>>> TEST CONNECTION: WITH-AUTHENTICATION <<<<<<<<"
 #########################################################################
-start-dependencies-auth "$image"
+start-cassandra-auth "$image"
 # YES - there is something async going on, so we have to give it even more time until 
 # it can accept properly authenticated connections
 sleep 1
@@ -74,7 +74,7 @@ set +x
 #########################################################################
 echo ">>>>>>>>>>>>>>>>>>>> TEST CONNECTION: WITH-CERTIFICATE <<<<<<<<"
 #########################################################################
-start-dependencies-cert "$image"
+start-cassandra-cert "$image"
 
 
 cert_args=( --cert ./etc/docker-cassandra/secrets/keystore.p12:cassandra )

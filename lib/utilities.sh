@@ -27,7 +27,7 @@ CASSANDRA_AUTHENTICATOR=AllowAllAuthenticator
 	CASSANDRA_ADMIN_PASSEORD=cassandra
 EOF
 
-start-dependencies() {
+start-image() {
 	local IMAGE_NAME=${1:?Need cassandra image name}
 	local TESTER=${2:?Need command line to execute to see if cassandra is up}
 	local ADD_ARGS=${3:-} # optional additional arguments
@@ -70,16 +70,16 @@ function test-simple () {
    [ $? = 28 ]
 }
 
-function start-dependencies-plain () {
-	start-dependencies "$1" test-simple
+function start-cassandra-plain () {
+	start-image "$1" test-simple
 }
 
-function start-dependencies-auth () {
-	start-dependencies "$1" test-simple "-e CASSANDRA_AUTHENTICATOR=PasswordAuthenticator"
+function start-cassandra-auth () {
+	start-image "$1" test-simple "-e CASSANDRA_AUTHENTICATOR=PasswordAuthenticator"
 }
 
-function start-dependencies-cert () {
-	start-dependencies "$1" test-tls "-e CASSANDRA_REQUIRE_CLIENT_CERTIFICATE=true"
+function start-cassandra-cert () {
+	start-image "$1" test-tls "-e CASSANDRA_REQUIRE_CLIENT_CERTIFICATE=true"
 }
 
 stop-dependencies() {
